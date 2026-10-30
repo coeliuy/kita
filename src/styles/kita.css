@@ -371,3 +371,5 @@ body.sheet-open #fab{display:none!important}
 .fig .v,.clock:not(.idle),.dur,.cl .num,.kv>span:last-child,.kv>b,td.r,.day-h>span:last-child,.pill b,.ring-t{color:var(--num)}
 .ring-t{fill:var(--num)}
 #nav svg.i,#tabbar svg.i,.menu-item svg,.ibtn svg,.btn.link svg,.theme-toggle svg{color:var(--icon)}
+/* Section headings (H2) and hero numbers stay in the primary colour in both modes */
+h2,.fig.hero .v,.stat .n{color:var(--accent)}

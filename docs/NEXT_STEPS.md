@@ -4,6 +4,30 @@ Kita is live at https://kita.coeli.workers.dev with email accounts, the
 Supabase database and importing from the prototype. These are the steps
 left, saved for later. "You" means Coeli; "Claude" means the coding assistant.
 
+## Before friends test it (checklist)
+
+Must do:
+1. **Email sending (you, ~20 minutes).** Supabase's built-in email only reaches addresses in your
+   Supabase team, a few per hour, so friends won't get their confirmation emails. Set up a free
+   Resend account, verify a domain you own, and enter its SMTP details in
+   **Supabase -> Authentication -> Emails -> SMTP settings**.
+2. **Privacy notice (Claude drafts, you check).** A short page saying what's stored, where
+   (Supabase, London), who can see it, and how to delete it; linked from sign-up and the footer.
+3. **Delete my account (Claude builds).** "Delete all my data" clears data but leaves the login.
+   Add a proper account deletion.
+4. **Feedback link (Claude builds).** A "Send feedback" link in the app (email or a form).
+5. **Check the homepage stats sources (you)** before sharing the link widely.
+
+Strongly recommended:
+6. **Backups.** The free Supabase plan has none. Either upgrade to Pro (about $25/month), or ask
+   testers to use Settings -> Download everything now and then.
+7. **Free projects pause after a week with no activity.** Unlikely while friends use it; if it
+   happens, restore it from the Supabase dashboard.
+8. **Test on your own phone** (iPhone Safari and Android Chrome), including signing up from scratch.
+
+Nice to have:
+9. Google sign-in (step 6), a custom domain (step 8), and error alerts (e.g. Sentry's free plan).
+
 ## Step 6: Google sign-in (about 10 minutes)
 
 1. **Google Cloud** (console.cloud.google.com), you:
