@@ -13,7 +13,7 @@ Being rebuilt from the single-file prototype (`prototype/kita.html`) into a full
 - [x] Step 2: The app's screens in React (data saved in the browser for now)
 - [x] Step 3: Database (Supabase) with row-level security
 - [x] Step 4: Accounts (email and password) and importing prototype data
-- [ ] Step 5: Live hosting (Cloudflare Pages)
+- [x] Step 5: Live hosting on Cloudflare: https://kita.coeli.workers.dev
 - [ ] Step 6: Google sign-in
 - [ ] Step 7: Privacy policy, terms and launch checks
 - [ ] Step 8: Custom domain
