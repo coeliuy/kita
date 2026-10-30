@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { ratesForTaxYear, taxYearLabel, taxYearOf, type PaymentTerms } from '../../lib/money';
 import { ConfirmButton, NumberField, TaxYearSelect } from '../components/ui';
 import { download, entriesCsv } from '../lib/files';
 import { today, uid } from '../lib/format';
 import { importBackup, ImportError } from '../lib/importBackup';
-import { ratesFor, yearSettings } from '../lib/selectors';
+import { ratesFor, sortedCategories, yearSettings } from '../lib/selectors';
+import { SUGGESTED_CATEGORIES } from '../lib/tasks';
 import { useKita } from '../store/KitaProvider';
 import type { RateOverrides, Settings as SettingsT, Theme } from '../store/types';
 
@@ -22,6 +23,43 @@ function Text({ k, label, type = 'text', area }: { k: keyof SettingsT; label: st
     <label className="f"><span>{label}</span>
       {area ? <textarea value={value} onChange={e => onChange(e.target.value)} /> : <input type={type} value={value} onChange={e => onChange(e.target.value)} />}
     </label>
+  );
+}
+
+function Categories() {
+  const { data, saveCategory, deleteCategory, addSuggestedCategories, toast } = useKita();
+  const [name, setName] = useState('');
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
+    const n = name.trim();
+    if (!n) return;
+    if (data.categories.some(c => c.name.toLowerCase() === n.toLowerCase())) { toast('You already have that category.'); return; }
+    await saveCategory({ id: uid(), name: n.slice(0, 100), createdAt: Date.now() });
+    setName('');
+    toast(`Added ${n}`);
+  };
+  return (
+    <section className="cats">
+      <div className="head"><h2>Work categories</h2></div>
+      <p className="sub" style={{ marginBottom: 14 }}>Group your tasks and time by the type of work, such as Social media or Email marketing.</p>
+      {sortedCategories(data).map(c => (
+        <div className="row" key={c.id}>
+          <input defaultValue={c.name} aria-label="Category name" style={{ maxWidth: 320 }}
+            onBlur={e => { const v = e.target.value.trim(); if (v && v !== c.name) { saveCategory({ ...c, name: v.slice(0, 100) }); toast('Category renamed'); } }} />
+          <ConfirmButton onConfirm={async () => { await deleteCategory(c.id); toast('Category deleted. Its time and tasks are kept, without a category.'); }}>Delete</ConfirmButton>
+        </div>
+      ))}
+      <form className="row" style={{ marginTop: 6 }} onSubmit={add}>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="New category, e.g. Paid ads" style={{ maxWidth: 320 }} aria-label="New category name" />
+        <button className="btn">Add</button>
+      </form>
+      {!data.categories.length && (
+        <p style={{ marginTop: 10 }}>
+          <button className="btn link" style={{ padding: 0, color: 'var(--accent)' }} onClick={addSuggestedCategories}>Add suggested categories</button>{' '}
+          <span className="small muted">({SUGGESTED_CATEGORIES.join(', ')})</span>
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -93,6 +131,7 @@ export function Settings() {
           {s.vatRegistered && <div style={{ minWidth: 200 }}><Text k="vatNumber" label="VAT registration number" /></div>}
         </div>
       </section>
+      <Categories />
       <section>
         <div className="head">
           <h2>Tax rates</h2>

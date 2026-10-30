@@ -1,5 +1,5 @@
 import { TABLES, settingsFromRow, settingsToRow, timerFromRow, timerToRow, yearFromRow, yearToRow } from './supabaseRows';
-import { DEFAULT_SETTINGS, type Client, type Expense, type Invoice, type TimeEntry } from './types';
+import { DEFAULT_SETTINGS, type Category, type Client, type Expense, type Invoice, type Task, type TimeEntry } from './types';
 
 // Every field must survive a trip to the database and back.
 describe('database row conversion', () => {
@@ -8,13 +8,13 @@ describe('database row conversion', () => {
   it('keeps clients intact', () => {
     const c: Client = {
       id: 'c1', name: 'Northlight', billing: 'retainer', rate: 50, fee: 1200, included: 25, startDate: '2026-07-01',
-      endDate: null, archived: false, color: '#1F6F5C', email: 'a@b.c', address: '1 Road', createdAt, demo: true,
+      endDate: null, archived: false, color: '#1F6F5C', weekly: 6, email: 'a@b.c', address: '1 Road', createdAt, demo: true,
     };
     expect(TABLES.clients.fromRow(TABLES.clients.toRow(c))).toEqual(c);
   });
 
   it('keeps time entries intact', () => {
-    const e: TimeEntry = { id: 'e1', clientId: 'c1', date: '2026-10-01', minutes: 90, billable: false, task: 'Posts', note: 'n', invoiceId: 'i1', createdAt, demo: false };
+    const e: TimeEntry = { id: 'e1', clientId: 'c1', date: '2026-10-01', minutes: 90, billable: false, task: 'Posts', note: 'n', invoiceId: 'i1', categoryId: 'k1', taskId: 't1', icsKey: 'uid@1', createdAt, demo: false };
     expect(TABLES.entries.fromRow(TABLES.entries.toRow(e))).toEqual(e);
   });
 
@@ -43,12 +43,24 @@ describe('database row conversion', () => {
   });
 
   it('keeps settings, year settings and the timer intact', () => {
-    const s = { ...DEFAULT_SETTINGS, name: 'Me', vatRegistered: true, vatNumber: 'GB1', terms: 'eofm' as const, theme: 'dark' as const };
+    const s = { ...DEFAULT_SETTINGS, name: 'Me', vatRegistered: true, vatNumber: 'GB1', terms: 'eofm' as const, theme: 'dark' as const, capacity: 30, invNotes: false, hideSetup: true };
     expect({ ...DEFAULT_SETTINGS, ...settingsFromRow(settingsToRow(s)) }).toEqual(s);
     const y = { otherIncome: 30000, goal: 40000, goalType: 'net' as const, taxSaved: 500, rateOverrides: { basicRate: 21 } };
     expect(yearFromRow(yearToRow(2026, y))).toEqual(y);
-    const t = { clientId: 'c1', task: 'Posts', startedAt: createdAt };
+    const t = { clientId: 'c1', categoryId: 'k1', taskId: 't1', task: 'Posts', startedAt: createdAt };
     expect(timerFromRow(timerToRow(t))).toEqual(t);
+  });
+
+  it('keeps categories and tasks intact', () => {
+    const c: Category = { id: 'k1', name: 'Social media', createdAt, demo: false };
+    expect(TABLES.categories.fromRow(TABLES.categories.toRow(c))).toEqual(c);
+    const t: Task = {
+      id: 't1', clientId: 'c1', categoryId: 'k1', title: 'LinkedIn batch', estimate: 120, due: '2026-11-06', recur: 'weekly',
+      notes: 'Five posts', status: 'done', doneAt: '2026-11-05', createdAt, demo: false,
+    };
+    expect(TABLES.tasks.fromRow(TABLES.tasks.toRow(t))).toEqual(t);
+    const open: Task = { ...t, status: 'todo', doneAt: null, due: null, recur: '', categoryId: '' };
+    expect(TABLES.tasks.fromRow(TABLES.tasks.toRow(open))).toEqual(open);
   });
 
   it('stores "no client" as an empty database value', () => {

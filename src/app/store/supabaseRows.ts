@@ -3,7 +3,7 @@
  * snake_case column names and a few different field names (e.g. `description`,
  * `sender`); everything else maps one to one.
  */
-import type { Client, Collection, Expense, Invoice, KitaData, Settings, Timer, TimeEntry, YearSettings } from './types';
+import type { Category, Client, Collection, Expense, Invoice, KitaData, Settings, Task, Timer, TimeEntry, YearSettings } from './types';
 
 type Row = Record<string, unknown>;
 
@@ -14,23 +14,25 @@ const iso = (ms: number) => new Date(Number.isFinite(ms) ? ms : Date.now()).toIS
 
 export const clientToRow = (c: Client): Row => ({
   id: c.id, name: c.name, billing: c.billing, rate: c.rate, fee: c.fee, included: c.included,
-  start_date: c.startDate ?? null, end_date: c.endDate ?? null, archived: !!c.archived, color: c.color,
+  start_date: c.startDate ?? null, end_date: c.endDate ?? null, archived: !!c.archived, color: c.color, weekly: c.weekly || 0,
   email: c.email, address: c.address, demo: !!c.demo, created_at: iso(c.createdAt),
 });
 export const clientFromRow = (r: Row): Client => ({
   id: str(r.id), name: str(r.name), billing: r.billing as Client['billing'], rate: num(r.rate), fee: num(r.fee),
   included: num(r.included), startDate: (r.start_date as string) ?? null, endDate: (r.end_date as string) ?? null,
-  archived: !!r.archived, color: str(r.color), email: str(r.email), address: str(r.address), demo: !!r.demo,
+  archived: !!r.archived, color: str(r.color), weekly: num(r.weekly), email: str(r.email), address: str(r.address), demo: !!r.demo,
   createdAt: Date.parse(str(r.created_at)) || 0,
 });
 
 export const entryToRow = (e: TimeEntry): Row => ({
   id: e.id, client_id: e.clientId || null, date: e.date, minutes: e.minutes, billable: e.billable, task: e.task,
-  note: e.note, invoice_id: e.invoiceId || null, demo: !!e.demo, created_at: iso(e.createdAt),
+  note: e.note, invoice_id: e.invoiceId || null, category_id: e.categoryId || null, task_id: e.taskId || null,
+  ics_key: e.icsKey || null, demo: !!e.demo, created_at: iso(e.createdAt),
 });
 export const entryFromRow = (r: Row): TimeEntry => ({
   id: str(r.id), clientId: str(r.client_id), date: str(r.date), minutes: num(r.minutes), billable: !!r.billable,
-  task: str(r.task), note: str(r.note), invoiceId: (r.invoice_id as string) ?? null, demo: !!r.demo,
+  task: str(r.task), note: str(r.note), invoiceId: (r.invoice_id as string) ?? null, categoryId: str(r.category_id),
+  taskId: str(r.task_id), ...(r.ics_key ? { icsKey: str(r.ics_key) } : {}), demo: !!r.demo,
   createdAt: Date.parse(str(r.created_at)) || 0,
 });
 
@@ -64,13 +66,14 @@ export const expenseFromRow = (r: Row): Expense => ({
 export const settingsToRow = (s: Settings): Row => ({
   name: s.name, business: s.business, address: s.address, email: s.email, payment: s.payment, vat_number: s.vatNumber,
   inv_prefix: s.invPrefix, next_inv: s.nextInv, terms: s.terms, vat_registered: s.vatRegistered, vat_rate: s.vatRate,
-  theme: s.theme, updated_at: new Date().toISOString(),
+  theme: s.theme, capacity: s.capacity || 0, inv_notes: s.invNotes, hide_setup: s.hideSetup, updated_at: new Date().toISOString(),
 });
 export const settingsFromRow = (r: Row): Partial<Settings> => ({
   name: str(r.name), business: str(r.business), address: str(r.address), email: str(r.email), payment: str(r.payment),
   vatNumber: str(r.vat_number), invPrefix: str(r.inv_prefix), nextInv: num(r.next_inv) || 1,
   terms: r.terms as Settings['terms'], vatRegistered: !!r.vat_registered, vatRate: num(r.vat_rate),
-  theme: (r.theme as Settings['theme']) ?? '',
+  theme: (r.theme as Settings['theme']) ?? '', capacity: num(r.capacity), invNotes: r.inv_notes !== false,
+  hideSetup: !!r.hide_setup,
 });
 
 export const yearToRow = (taxYear: number, y: YearSettings): Row => ({
@@ -82,8 +85,31 @@ export const yearFromRow = (r: Row): YearSettings => ({
   taxSaved: num(r.tax_saved), rateOverrides: (r.rate_overrides as YearSettings['rateOverrides']) ?? {},
 });
 
-export const timerToRow = (t: Timer): Row => ({ client_id: t.clientId || null, task: t.task, started_at: new Date(t.startedAt).toISOString() });
-export const timerFromRow = (r: Row): Timer => ({ clientId: str(r.client_id), task: str(r.task), startedAt: Date.parse(str(r.started_at)) });
+export const timerToRow = (t: Timer): Row => ({
+  client_id: t.clientId || null, category_id: t.categoryId || null, task_id: t.taskId || null, task: t.task,
+  started_at: new Date(t.startedAt).toISOString(),
+});
+export const timerFromRow = (r: Row): Timer => ({
+  clientId: str(r.client_id), categoryId: str(r.category_id), taskId: str(r.task_id), task: str(r.task),
+  startedAt: Date.parse(str(r.started_at)),
+});
+
+export const categoryToRow = (c: Category): Row => ({ id: c.id, name: c.name, demo: !!c.demo, created_at: iso(c.createdAt) });
+export const categoryFromRow = (r: Row): Category => ({
+  id: str(r.id), name: str(r.name), demo: !!r.demo, createdAt: Date.parse(str(r.created_at)) || 0,
+});
+
+export const taskToRow = (t: Task): Row => ({
+  id: t.id, client_id: t.clientId || null, category_id: t.categoryId || null, title: t.title, estimate: t.estimate || 0,
+  due: t.due || null, recur: t.recur, notes: t.notes, status: t.status, done_at: t.status === 'done' ? t.doneAt ?? null : null,
+  demo: !!t.demo, created_at: iso(t.createdAt),
+});
+export const taskFromRow = (r: Row): Task => ({
+  id: str(r.id), clientId: str(r.client_id), categoryId: str(r.category_id), title: str(r.title), estimate: num(r.estimate),
+  due: (r.due as string) ?? null, recur: (r.recur as Task['recur']) || '', notes: str(r.notes),
+  status: (r.status as Task['status']) || 'todo', doneAt: (r.done_at as string) ?? null, demo: !!r.demo,
+  createdAt: Date.parse(str(r.created_at)) || 0,
+});
 
 /** Database table and converters for each collection. */
 export const TABLES: { [C in Collection]: { table: string; toRow: (x: KitaData[C][number]) => Row; fromRow: (r: Row) => KitaData[C][number] } } = {
@@ -91,4 +117,6 @@ export const TABLES: { [C in Collection]: { table: string; toRow: (x: KitaData[C
   entries: { table: 'time_entries', toRow: entryToRow, fromRow: entryFromRow },
   invoices: { table: 'invoices', toRow: invoiceToRow, fromRow: invoiceFromRow },
   expenses: { table: 'expenses', toRow: expenseToRow, fromRow: expenseFromRow },
+  categories: { table: 'categories', toRow: categoryToRow, fromRow: categoryFromRow },
+  tasks: { table: 'tasks', toRow: taskToRow, fromRow: taskFromRow },
 };

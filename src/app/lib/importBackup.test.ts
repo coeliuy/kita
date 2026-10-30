@@ -123,6 +123,40 @@ describe('importBackup from the prototype', () => {
   });
 });
 
+describe('importBackup with tasks and categories (later prototype)', () => {
+  const backup = {
+    ...structuredClone(prototypeBackup),
+    settings: { ...prototypeBackup.settings, capacity: 30, invNotes: false },
+    categories: [{ id: 'k1', name: 'Social media' }, { id: 'k2', name: 'Email marketing' }, { id: 'kd', name: 'Demo cat', demo: true }],
+    tasks: [
+      { id: 't1', clientId: 'mfa1', categoryId: 'k1', title: 'LinkedIn batch', estimate: 120, due: '2026-11-06', recur: 'weekly', status: 'doing', notes: 'Five posts' },
+      { id: 't2', clientId: 'mfa2', categoryId: '', title: 'Old task', status: 'done', doneAt: '2026-09-01' },
+    ],
+  };
+  backup.entries[0] = { ...backup.entries[0]!, categoryId: 'k1', taskId: 't1' } as never;
+
+  it('brings categories and tasks across, keeping links', () => {
+    const r = run(backup);
+    expect(r.categories.map(c => c.name)).toEqual(['Social media', 'Email marketing']);
+    const social = r.categories[0]!;
+    const [batch, old] = r.tasks;
+    expect(batch).toMatchObject({ title: 'LinkedIn batch', estimate: 120, due: '2026-11-06', recur: 'weekly', status: 'doing', categoryId: social.id, clientId: r.clients[0]!.id });
+    expect(old).toMatchObject({ status: 'done', doneAt: '2026-09-01', categoryId: '' });
+    const posts = r.entries.find(e => e.task === 'Posts')!;
+    expect(posts.categoryId).toBe(social.id);
+    expect(posts.taskId).toBe(batch!.id);
+    expect(r.settings).toMatchObject({ capacity: 30, invNotes: false });
+  });
+
+  it('reuses a category you already have with the same name', () => {
+    const existing = emptyData();
+    existing.categories.push({ id: 'mine', name: 'social MEDIA', createdAt: 0 });
+    const r = run(backup, existing);
+    expect(r.categories.map(c => c.name)).toEqual(['Email marketing']);
+    expect(r.tasks[0]!.categoryId).toBe('mine');
+  });
+});
+
 describe('importBackup from this app', () => {
   it('imports per-year settings', () => {
     const backup = { ...emptyData(), years: { 2025: { otherIncome: 1, goal: 2, goalType: 'gross', taxSaved: 3, rateOverrides: {} } } };

@@ -22,10 +22,10 @@ export function entriesCsv(d: KitaData): string {
   const clientName = (id: string) => d.clients.find(c => c.id === id)?.name ?? '';
   const invoiceNo = (id?: string | null) => d.invoices.find(i => i.id === id)?.number ?? '';
   return csv([
-    ['Date', 'Client', 'Task', 'Note', 'Hours', 'Billable', 'Invoice'],
+    ['Date', 'Client', 'Category', 'Task', 'Note', 'Hours', 'Billable', 'Invoice'],
     ...[...d.entries]
       .sort((a, b) => a.date.localeCompare(b.date))
-      .map(e => [e.date, clientName(e.clientId), e.task, e.note, (e.minutes / 60).toFixed(2), e.billable ? 'Yes' : 'No', invoiceNo(e.invoiceId)]),
+      .map(e => [e.date, clientName(e.clientId), d.categories.find(c => c.id === e.categoryId)?.name ?? '', e.task, e.note, (e.minutes / 60).toFixed(2), e.billable ? 'Yes' : 'No', invoiceNo(e.invoiceId)]),
   ]);
 }
 

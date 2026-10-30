@@ -13,6 +13,8 @@ function check<T>(res: { data: T; error: { message: string } | null }): T {
   return res.data;
 }
 
+const PAGE = 1000;
+
 export class SupabaseStore implements KitaStore {
   readonly kind = 'cloud' as const;
   /** The invoice counter as last seen in the database, to tell whether the user changed it. */
@@ -22,8 +24,16 @@ export class SupabaseStore implements KitaStore {
 
   async load(): Promise<KitaData> {
     const d = emptyData();
-    const all = (table: string) => this.sb.from(table).select('*');
-    const [settings, years, timer, clients, entries, invoices, expenses] = await Promise.all([
+    // Supabase returns at most 1,000 rows per request, so read big tables a page at a time.
+    const all = async (table: string) => {
+      const rows: Record<string, unknown>[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const page = check(await this.sb.from(table).select('*').order('id').range(from, from + PAGE - 1)) ?? [];
+        rows.push(...page);
+        if (page.length < PAGE) return { data: rows, error: null };
+      }
+    };
+    const [settings, years, timer, clients, entries, invoices, expenses, categories, tasks] = await Promise.all([
       this.sb.from('settings').select('*').maybeSingle(),
       all('year_settings'),
       this.sb.from('timers').select('*').maybeSingle(),
@@ -31,6 +41,8 @@ export class SupabaseStore implements KitaStore {
       all(TABLES.entries.table),
       all(TABLES.invoices.table),
       all(TABLES.expenses.table),
+      all(TABLES.categories.table),
+      all(TABLES.tasks.table),
     ]);
     const s = check(settings);
     d.settings = { ...DEFAULT_SETTINGS, ...(s ? settingsFromRow(s) : {}) };
@@ -42,6 +54,8 @@ export class SupabaseStore implements KitaStore {
     d.entries = (check(entries) ?? []).map(TABLES.entries.fromRow);
     d.invoices = (check(invoices) ?? []).map(TABLES.invoices.fromRow);
     d.expenses = (check(expenses) ?? []).map(TABLES.expenses.fromRow);
+    d.categories = (check(categories) ?? []).map(TABLES.categories.fromRow);
+    d.tasks = (check(tasks) ?? []).map(TABLES.tasks.fromRow);
     return d;
   }
 

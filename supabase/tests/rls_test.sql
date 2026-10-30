@@ -30,6 +30,10 @@ select pg_temp.check(public.take_invoice_number() = 'INV-002', 'Alice gets INV-0
 insert into public.invoices (id, number, client_id, issue_date, due_date) values
   ('bbbbbbbb-0000-0000-0000-000000000001', 'INV-003', 'aaaaaaaa-0000-0000-0000-000000000001', '2026-10-01', '2026-10-31');
 select pg_temp.check(public.take_invoice_number() = 'INV-004', 'numbering skips a number already used');
+insert into public.categories (id, name) values ('cccccccc-0000-0000-0000-000000000001', 'Social media');
+insert into public.tasks (id, client_id, category_id, title, estimate) values
+  ('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'cccccccc-0000-0000-0000-000000000001', 'LinkedIn batch', 120);
+update public.time_entries set category_id = 'cccccccc-0000-0000-0000-000000000001', task_id = 'dddddddd-0000-0000-0000-000000000001';
 
 -- Bob signs in: he must see none of it and be unable to change it
 select pg_temp.act_as('22222222-2222-2222-2222-222222222222');
@@ -40,6 +44,20 @@ select pg_temp.check((select count(*) from public.expenses) = 0, 'Bob sees no ex
 select pg_temp.check((select count(*) from public.settings) = 0, 'Bob sees no settings');
 select pg_temp.check((select count(*) from public.year_settings) = 0, 'Bob sees no year settings');
 select pg_temp.check((select count(*) from public.timers) = 0, 'Bob sees no timer');
+select pg_temp.check((select count(*) from public.categories) = 0, 'Bob sees no categories');
+select pg_temp.check((select count(*) from public.tasks) = 0, 'Bob sees no tasks');
+update public.tasks set title = 'hacked';
+delete from public.categories;
+do $$ begin
+  insert into public.time_entries (task_id, date, minutes) values ('dddddddd-0000-0000-0000-000000000001', '2026-10-01', 60);
+  raise exception 'FAILED: Bob linked time to Alice''s task';
+exception when foreign_key_violation then raise notice 'ok: Bob can''t link time to Alice''s task';
+end $$;
+do $$ begin
+  insert into public.tasks (category_id, title) values ('cccccccc-0000-0000-0000-000000000001', 'sneaky');
+  raise exception 'FAILED: Bob used Alice''s category';
+exception when foreign_key_violation then raise notice 'ok: Bob can''t use Alice''s category';
+end $$;
 
 update public.clients set name = 'hacked' where id = 'aaaaaaaa-0000-0000-0000-000000000001';
 delete from public.time_entries;
@@ -72,11 +90,17 @@ select pg_temp.act_as('11111111-1111-1111-1111-111111111111');
 select pg_temp.check((select name from public.clients) = 'Alice client', 'Alice''s client unchanged');
 select pg_temp.check((select count(*) from public.time_entries) = 1, 'Alice''s time still there');
 select pg_temp.check((select count(*) from public.expenses) = 1, 'Alice''s expense still there');
+select pg_temp.check((select title from public.tasks) = 'LinkedIn batch', 'Alice''s task unchanged');
+select pg_temp.check((select count(*) from public.categories) = 1, 'Alice''s category still there');
 
 -- Deleting a client keeps its time; deleting an invoice frees its time
 update public.time_entries set invoice_id = 'bbbbbbbb-0000-0000-0000-000000000001';
 delete from public.invoices where id = 'bbbbbbbb-0000-0000-0000-000000000001';
 select pg_temp.check((select invoice_id from public.time_entries) is null, 'deleting an invoice makes its time uninvoiced');
+delete from public.tasks;
+select pg_temp.check((select task_id from public.time_entries) is null, 'deleting a task keeps its time');
+delete from public.categories;
+select pg_temp.check((select category_id from public.time_entries) is null, 'deleting a category keeps its time');
 delete from public.clients;
 select pg_temp.check((select count(*) from public.time_entries where client_id is null) = 1, 'deleting a client keeps its time');
 

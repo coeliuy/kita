@@ -10,7 +10,7 @@ import {
   monthOf, monthStart, ratesForTaxYear, sumPounds, taxYearOf,
   type InvoiceLine, type InvoiceLineKind, type PaymentTerms,
 } from '../../lib/money';
-import type { Client, Expense, Invoice, KitaData, RateOverrides, Settings, TimeEntry, YearSettings } from '../store/types';
+import type { Category, Client, Expense, Invoice, KitaData, RateOverrides, Settings, Task, TimeEntry, YearSettings } from '../store/types';
 import { EXPENSE_CATEGORIES } from './categories';
 import { COLORS } from './demo';
 
@@ -19,6 +19,8 @@ export interface ImportResult {
   invoices: Invoice[];
   entries: TimeEntry[];
   expenses: Expense[];
+  categories: Category[];
+  tasks: Task[];
   settings: Partial<Settings>;
   /** Per-tax-year settings (goal, salary, tax pot, rate changes). */
   years: { taxYear: number; patch: Partial<YearSettings> }[];
@@ -87,11 +89,33 @@ export function importBackup(raw: unknown, existing: KitaData, today: string, ne
     return {
       id: idFor(c.id), name: s(c.name).slice(0, 200) || 'Unnamed client', billing, rate: n(c.rate), fee: n(c.fee),
       included: n(c.included), startDate: start, endDate: isDate(c.endDate) ? c.endDate : null, archived: !!c.archived,
-      color, email: s(c.email), address: s(c.address), createdAt: n(c.createdAt) || Date.now(),
+      color, weekly: Math.max(0, n(c.weekly)), email: s(c.email), address: s(c.address), createdAt: n(c.createdAt) || Date.now(),
     };
   });
   const billingOf = new Map(rawClients.map(c => [idFor(c.id), s(c.billing)]));
   const clientById = new Map(clients.map(c => [c.id, c]));
+
+  // Work categories: reuse one you already have with the same name.
+  const categories: Category[] = [];
+  for (const c of real(arr(raw.categories))) {
+    const name = s(c.name).trim().slice(0, 100);
+    if (!name) { skipped++; continue; }
+    const same = [...existing.categories, ...categories].find(x => x.name.toLowerCase() === name.toLowerCase());
+    if (same) ids.set(s(c.id), same.id);
+    else categories.push({ id: idFor(c.id), name, createdAt: n(c.createdAt) || Date.now() });
+  }
+
+  const tasks: Task[] = real(arr(raw.tasks)).flatMap(t => {
+    const title = s(t.title).trim().slice(0, 300);
+    if (!title) { skipped++; return []; }
+    const status = t.status === 'doing' || t.status === 'done' ? t.status : 'todo';
+    return [{
+      id: idFor(t.id), clientId: known(t.clientId), categoryId: known(t.categoryId), title,
+      estimate: Math.max(0, Math.round(n(t.estimate))), due: isDate(t.due) ? t.due : null,
+      recur: t.recur === 'weekly' || t.recur === 'monthly' ? t.recur : '', notes: s(t.notes), status,
+      doneAt: status === 'done' ? (isDate(t.doneAt) ? t.doneAt : null) : null, createdAt: n(t.createdAt) || Date.now(),
+    }];
+  });
 
   const sender = {
     name: s(ps.name), business: s(ps.business), address: s(ps.address), email: s(ps.email),
@@ -135,6 +159,7 @@ export function importBackup(raw: unknown, existing: KitaData, today: string, ne
     return [{
       id: idFor(e.id), clientId: known(e.clientId), date: e.date, minutes, billable: e.billable !== false,
       task: s(e.task), note: s(e.note), invoiceId: invoiceIds.has(invoiceId) ? invoiceId : null,
+      categoryId: known(e.categoryId), taskId: known(e.taskId), ...(e.icsKey ? { icsKey: s(e.icsKey) } : {}),
       createdAt: n(e.createdAt) || Date.now(),
     }];
   });
@@ -153,6 +178,8 @@ export function importBackup(raw: unknown, existing: KitaData, today: string, ne
     nextInv: Math.max(existing.settings.nextInv, Math.floor(n(ps.nextInv)) || 1),
     ...(terms && { terms }),
     vatRegistered: !!(ps.vatRegistered ?? ps.vat),
+    ...(ps.capacity != null && { capacity: Math.min(168, Math.max(0, n(ps.capacity))) }),
+    ...(ps.invNotes != null && { invNotes: !!ps.invNotes }),
     ...(ps.vatRate != null && { vatRate: n(ps.vatRate) }),
   };
 
@@ -184,5 +211,5 @@ export function importBackup(raw: unknown, existing: KitaData, today: string, ne
     }
   }
 
-  return { clients, invoices, entries, expenses, settings, years, skipped };
+  return { clients, categories, tasks, invoices, entries, expenses, settings, years, skipped };
 }

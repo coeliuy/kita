@@ -29,7 +29,7 @@ function ClientForm({ client, onDone }: { client: Client | null; onDone: () => v
     const endMonth = str('endMonth');
     const c: Client = {
       ...(client ?? { id: uid(), createdAt: Date.now() }),
-      name: str('name'), billing, color: str('color'), rate: num('rate'), fee: num('fee'), included: num('included'),
+      name: str('name'), billing, color: str('color'), weekly: client?.weekly ?? 0, rate: num('rate'), fee: num('fee'), included: num('included'),
       email: str('email'), address: str('address'), archived: fd.get('archived') === 'on',
       startDate: billing === 'retainer' && startMonth ? monthStart(startMonth) : client?.startDate ?? null,
       endDate: billing === 'retainer' && endMonth ? monthEnd(endMonth) : null,

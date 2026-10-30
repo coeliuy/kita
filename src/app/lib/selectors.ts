@@ -30,6 +30,18 @@ import { DEFAULT_YEAR, type Client, type KitaData, type YearSettings } from '../
 
 export const clientById = (d: KitaData, id: string) => d.clients.find(c => c.id === id);
 
+export const sortedCategories = (d: KitaData) => [...d.categories].sort((a, b) => a.name.localeCompare(b.name));
+
+/** A category's name; time without one shows as "General". */
+export const categoryName = (d: KitaData, id: string | undefined, fallback = 'General') =>
+  d.categories.find(c => c.id === id)?.name ?? fallback;
+
+/** The client and category last used, to pre-fill forms. */
+export function lastUsed(d: KitaData) {
+  const e = [...d.entries].sort((a, b) => b.createdAt - a.createdAt).find(x => !clientById(d, x.clientId)?.archived && clientById(d, x.clientId));
+  return { clientId: e?.clientId ?? activeClients(d)[0]?.id ?? '', categoryId: e?.categoryId ?? '' };
+}
+
 export const activeClients = (d: KitaData) =>
   d.clients.filter(c => !c.archived).sort((a, b) => a.name.localeCompare(b.name));
 

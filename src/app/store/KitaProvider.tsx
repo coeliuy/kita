@@ -5,12 +5,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cleanLines, dueDate, invoiceTotals, type InvoiceLine, type ISODate, type MonthKey } from '../../lib/money';
 import { buildDemoData } from '../lib/demo';
-import { today, uid, ymd } from '../lib/format';
+import { formatHM } from '../../lib/money';
+import { fmtDate, today, uid, ymd } from '../lib/format';
+import { nextDue, SUGGESTED_CATEGORIES } from '../lib/tasks';
 import type { ImportResult } from '../lib/importBackup';
 import { clientById, yearSettings } from '../lib/selectors';
 import type { Account } from '../auth/AuthGate';
 import type { KitaStore } from './store';
-import { DEFAULT_SETTINGS, DEFAULT_YEAR, type Client, type Collection, type Expense, type Invoice, type KitaData, type Settings, type TimeEntry, type YearSettings } from './types';
+import { DEFAULT_SETTINGS, DEFAULT_YEAR, type Category, type Task, type Client, type Collection, type Expense, type Invoice, type KitaData, type Settings, type TimeEntry, type YearSettings } from './types';
 
 export interface NewInvoice {
   clientId: string;
@@ -31,9 +33,24 @@ interface KitaContext {
   deleteClient: (id: string) => Promise<void>;
   saveEntry: (e: TimeEntry) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
-  startTimer: (clientId: string, task: string) => Promise<void>;
-  /** Returns the minutes saved, or 0 if nothing was saved. */
-  stopTimer: (save: boolean) => Promise<number>;
+  /** Start a timer. Any timer already running is stopped and its time saved first. */
+  startTimer: (t: { clientId: string; categoryId: string; task: string }) => Promise<void>;
+  /**
+   * Stop the timer, saving the time if `save` (and it's at least a minute).
+   * Tells the user what happened, and asks whether a task is finished.
+   */
+  stopTimer: (save: boolean) => Promise<void>;
+  /** After stopping a task's timer: the question "Is it finished?" */
+  askDone: { taskId: string; entryId: string; minutes: number } | null;
+  answerAskDone: (finished: boolean, note: string) => Promise<void>;
+  saveCategory: (c: Category) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
+  addSuggestedCategories: () => Promise<void>;
+  saveTask: (t: Task) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  startTask: (id: string) => Promise<void>;
+  completeTask: (id: string) => Promise<void>;
+  reopenTask: (id: string) => Promise<void>;
   createInvoice: (draft: NewInvoice) => Promise<Invoice | null>;
   markPaid: (id: string, paidDate: ISODate) => Promise<void>;
   markUnpaid: (id: string) => Promise<void>;
@@ -59,8 +76,10 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
   const [data, setData] = useState<KitaData | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [toastMsg, setToastMsg] = useState<{ text: string; n: number } | null>(null);
+  const [askDone, setAskDone] = useState<KitaContext['askDone']>(null);
   // The latest data, for actions that need it without waiting for a re-render.
   const ref = useRef<KitaData | null>(null);
+  const askRef = useRef<KitaContext['askDone']>(null);
   // Saves waiting for a pause in typing.
   const pending = useRef(new Map<string, { timer: ReturnType<typeof setTimeout>; run: () => void }>());
 
@@ -146,30 +165,105 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
       p.set(key, { timer: setTimeout(run, 400), run });
     };
 
+    const begin = async (timer: NonNullable<KitaData['timer']> extends infer T ? Omit<T, 'startedAt'> : never) => {
+      const t = { ...timer, startedAt: Date.now() };
+      commit({ ...cur(), timer: t });
+      await save(store.saveTimer(t));
+    };
+
+    /** Stop the timer. `quiet` = no messages (used when another timer takes over). */
+    const stop = async (keep: boolean, quiet: boolean) => {
+      const t = cur().timer;
+      if (!t) return;
+      commit({ ...cur(), timer: null });
+      await save(store.saveTimer(null));
+      const minutes = Math.round((Date.now() - t.startedAt) / 60000);
+      if (!keep) return;
+      if (minutes < 1) {
+        if (!quiet) toast('Less than a minute, so nothing was saved.');
+        return;
+      }
+      const entry: TimeEntry = {
+        id: uid(), clientId: t.clientId, categoryId: t.categoryId, taskId: t.taskId, task: t.task, note: '',
+        date: ymd(new Date(t.startedAt)), minutes, billable: true, createdAt: Date.now(),
+      };
+      await upsert('entries', [entry]);
+      if (quiet) return;
+      const task = t.taskId ? cur().tasks.find(x => x.id === t.taskId) : null;
+      if (task && task.status !== 'done') {
+        askRef.current = { taskId: task.id, entryId: entry.id, minutes };
+        setAskDone(askRef.current);
+      } else toast(`Saved ${formatHM(minutes)}${new Date().getHours() >= 17 ? '. See you tomorrow.' : ''}`);
+    };
+
+    /** Mark a task done; a repeating task gets its next one. */
+    const complete = async (id: string) => {
+      const t = cur().tasks.find(x => x.id === id);
+      if (!t) return;
+      const done: Task = { ...t, status: 'done', doneAt: today() };
+      const due = nextDue(t, today());
+      if (due) {
+        await upsert('tasks', [done, { ...t, id: uid(), status: 'todo', doneAt: null, due, createdAt: Date.now(), demo: undefined }]);
+        toast(`Done. The next one is due ${fmtDate(due)}.`);
+      } else {
+        await upsert('tasks', [done]);
+        toast('Task done.');
+      }
+    };
+
     return {
       saveClient: async (c: Client) => void (await upsert('clients', [c])),
       deleteClient: async (id: string) => void (await remove('clients', [id])),
       saveEntry: async (e: TimeEntry) => void (await upsert('entries', [e])),
       deleteEntry: async (id: string) => void (await remove('entries', [id])),
 
-      startTimer: async (clientId: string, task: string) => {
-        const timer = { clientId, task: task.trim(), startedAt: Date.now() };
-        commit({ ...cur(), timer });
-        await save(store.saveTimer(timer));
+      startTimer: async (t: { clientId: string; categoryId: string; task: string }) => {
+        await stop(true, true);
+        await begin({ clientId: t.clientId, categoryId: t.categoryId, taskId: '', task: t.task.trim() });
       },
 
-      stopTimer: async (keep: boolean) => {
-        const t = cur().timer;
-        if (!t) return 0;
-        commit({ ...cur(), timer: null });
-        await save(store.saveTimer(null));
-        const minutes = Math.round((Date.now() - t.startedAt) / 60000);
-        if (!keep || minutes < 1) return 0;
-        await upsert('entries', [{
-          id: uid(), clientId: t.clientId, task: t.task, note: '', date: ymd(new Date(t.startedAt)),
-          minutes, billable: true, createdAt: Date.now(),
-        }]);
-        return minutes;
+      stopTimer: (keep: boolean) => stop(keep, false),
+
+      answerAskDone: async (finished: boolean, note: string) => {
+        const a = askRef.current;
+        setAskDone(null);
+        askRef.current = null;
+        if (!a) return;
+        const e = cur().entries.find(x => x.id === a.entryId);
+        if (e && note.trim()) await upsert('entries', [{ ...e, note: note.trim() }]);
+        if (finished) await complete(a.taskId);
+        else toast('Kept in progress');
+      },
+
+      saveCategory: async (c: Category) => void (await upsert('categories', [c])),
+      deleteCategory: async (id: string) => void (await remove('categories', [id])),
+      addSuggestedCategories: async () => {
+        const have = new Set(cur().categories.map(c => c.name.toLowerCase()));
+        const add = SUGGESTED_CATEGORIES.filter(n => !have.has(n.toLowerCase())).map(name => ({ id: uid(), name, createdAt: Date.now() }));
+        if (add.length) await upsert('categories', add);
+        toast('Categories added. Rename or remove them in Settings.');
+      },
+
+      saveTask: async (t: Task) => void (await upsert('tasks', [t])),
+      deleteTask: async (id: string) => {
+        if (cur().timer?.taskId === id) await stop(true, true);
+        await remove('tasks', [id]);
+      },
+      startTask: async (id: string) => {
+        const t = cur().tasks.find(x => x.id === id);
+        if (!t) return;
+        await stop(true, true);
+        if (t.status !== 'doing') await upsert('tasks', [{ ...t, status: 'doing', doneAt: null }]);
+        await begin({ clientId: t.clientId, categoryId: t.categoryId, taskId: t.id, task: t.title });
+        toast(`Tracking ${t.title}`);
+      },
+      completeTask: async (id: string) => {
+        if (cur().timer?.taskId === id) await stop(true, true);
+        await complete(id);
+      },
+      reopenTask: async (id: string) => {
+        const t = cur().tasks.find(x => x.id === id);
+        if (t) await upsert('tasks', [{ ...t, status: 'todo', doneAt: null }]);
       },
 
       createInvoice: async (draft: NewInvoice) => {
@@ -230,7 +324,7 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
       },
 
       loadDemo: async () => {
-        const demo = buildDemoData(today());
+        const demo = buildDemoData(today(), cur().categories);
         const d = cur();
         let next = d.settings.nextInv;
         const invoices: Invoice[] = [];
@@ -238,16 +332,23 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
           invoices.push({ ...inv, number: await store.takeInvoiceNumber() });
           next++;
         }
-        commit({ ...cur(), settings: { ...cur().settings, nextInv: next } });
-        // Clients, then invoices, then the time and expenses that point at them.
+        // A typical working week, so capacity planning has something to show.
+        const settings = { ...cur().settings, nextInv: next, capacity: cur().settings.capacity || 30 };
+        commit({ ...cur(), settings });
+        await save(store.saveSettings(settings));
+        // Things are saved before anything that points at them.
+        await upsert('categories', demo.categories);
         await upsert('clients', demo.clients);
+        await upsert('tasks', demo.tasks);
         await upsert('invoices', invoices);
         await upsert('entries', demo.entries);
         await upsert('expenses', demo.expenses);
       },
 
       importData: async (r: ImportResult) => {
+        await upsert('categories', r.categories);
         await upsert('clients', r.clients);
+        await upsert('tasks', r.tasks);
         await upsert('invoices', r.invoices);
         await upsert('entries', r.entries);
         await upsert('expenses', r.expenses);
@@ -264,7 +365,10 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
       clearData: async (onlyDemo: boolean) => {
         const d = cur();
         const pick = (rows: { id: string; demo?: boolean }[]) => rows.filter(r => !onlyDemo || r.demo).map(r => r.id);
-        for (const c of ['entries', 'invoices', 'expenses', 'clients'] as const) {
+        // A running timer for something being removed is stopped without saving.
+        const t = d.timer;
+        if (t && (!onlyDemo || d.clients.find(c => c.id === t.clientId)?.demo)) await stop(false, true);
+        for (const c of ['entries', 'invoices', 'expenses', 'tasks', 'clients', 'categories'] as const) {
           const ids = pick(d[c]);
           if (ids.length) await remove(c, ids);
         }
@@ -287,7 +391,7 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
   if (!data) return <div className="loading">Loading your data…</div>;
 
   return (
-    <Ctx.Provider value={{ data, storeKind: store.kind, account, toast, ...actions }}>
+    <Ctx.Provider value={{ data, storeKind: store.kind, account, toast, askDone, ...actions }}>
       {children}
       <div id="toast" role="status" aria-live="polite" className={toastMsg ? 'show' : ''}>
         {toastMsg?.text}

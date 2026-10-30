@@ -3,9 +3,12 @@
  * fields the calculations need; these add what the screens need.
  */
 import type * as M from '../../lib/money';
+import type { ISODate } from '../../lib/money';
 
 export interface Client extends M.Client {
   color: string;
+  /** Expected hours a week from this client, for capacity planning (0 = work it out). */
+  weekly: number;
   email: string;
   address: string;
   createdAt: number;
@@ -13,7 +16,13 @@ export interface Client extends M.Client {
 }
 
 export interface TimeEntry extends M.TimeEntry {
+  /** What was done (free text, or the task's title when tracked against a task). */
   task: string;
+  categoryId: string;
+  /** The task this time was tracked against, if any. */
+  taskId: string;
+  /** Set on meetings imported from a calendar file, so they aren't imported twice. */
+  icsKey?: string;
   note: string;
   createdAt: number;
   demo?: boolean;
@@ -41,6 +50,33 @@ export interface Invoice extends M.Invoice {
   demo?: boolean;
 }
 
+/** A kind of work, e.g. Social media or Email marketing. */
+export interface Category {
+  id: string;
+  name: string;
+  createdAt: number;
+  demo?: boolean;
+}
+
+export type TaskStatus = 'todo' | 'doing' | 'done';
+export type Recur = '' | 'weekly' | 'monthly';
+
+export interface Task {
+  id: string;
+  clientId: string;
+  categoryId: string;
+  title: string;
+  /** Estimated minutes (0 = no estimate). */
+  estimate: number;
+  due: ISODate | null;
+  recur: Recur;
+  notes: string;
+  status: TaskStatus;
+  doneAt: ISODate | null;
+  createdAt: number;
+  demo?: boolean;
+}
+
 export interface Expense extends M.Expense {
   desc: string;
   clientId: string;
@@ -62,6 +98,12 @@ export interface Settings {
   vatRegistered: boolean;
   vatRate: number;
   theme: Theme;
+  /** Hours a week you can work (0 = not set). */
+  capacity: number;
+  /** Show task names and notes under invoice lines. */
+  invNotes: boolean;
+  /** Hide the "Get set up" checklist on Today. */
+  hideSetup: boolean;
 }
 
 /** The numeric tax rate fields a user can override for a year. */
@@ -81,6 +123,9 @@ export interface YearSettings {
 
 export interface Timer {
   clientId: string;
+  categoryId: string;
+  /** The task being tracked, if started from one. */
+  taskId: string;
   task: string;
   startedAt: number;
 }
@@ -94,17 +139,21 @@ export interface KitaData {
   entries: TimeEntry[];
   invoices: Invoice[];
   expenses: Expense[];
+  categories: Category[];
+  tasks: Task[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   name: '', business: '', address: '', email: '', payment: '', vatNumber: '',
   invPrefix: 'INV-', nextInv: 1, terms: '30', vatRegistered: false, vatRate: 20, theme: '',
+  capacity: 0, invNotes: true, hideSetup: false,
 };
 
 export const DEFAULT_YEAR: YearSettings = { otherIncome: 0, goal: 0, goalType: 'gross', taxSaved: 0, rateOverrides: {} };
 
 export const emptyData = (): KitaData => ({
   settings: { ...DEFAULT_SETTINGS }, years: {}, timer: null, clients: [], entries: [], invoices: [], expenses: [],
+  categories: [], tasks: [],
 });
 
-export type Collection = 'clients' | 'entries' | 'invoices' | 'expenses';
+export type Collection = 'clients' | 'entries' | 'invoices' | 'expenses' | 'categories' | 'tasks';

@@ -50,6 +50,8 @@ export type InvoiceLineKind = 'time' | 'retainer_fee' | 'overage' | 'fixed_fee' 
 
 export interface InvoiceLine {
   desc: string;
+  /** Optional smaller text under the line, e.g. the tasks it covers. */
+  detail?: string;
   qty: number;
   unit: number;
   kind: InvoiceLineKind;

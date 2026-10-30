@@ -2,6 +2,7 @@ import { Icon } from '../components/ui';
 import { useRouter, type View } from '../router';
 
 const ITEMS: [View, string, string][] = [
+  ['money', 'Money', 'Take-home, tax pot, goal and quarterly totals'],
   ['clients', 'Clients', 'Rates, retainers and billing details'],
   ['expenses', 'Expenses', 'Log business costs in HMRC categories'],
   ['settings', 'Settings', 'Your details, invoices, tax rates and data'],

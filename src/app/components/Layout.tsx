@@ -5,17 +5,18 @@ import { clockText, today } from '../lib/format';
 import { clientById, entriesIn } from '../lib/selectors';
 import { useRouter, type View } from '../router';
 import { useKita } from '../store/KitaProvider';
+import { AskDoneSheet } from './AskDoneSheet';
 import { Icon, useNow } from './ui';
 
 const NAV: [View, string][] = [
-  ['track', 'Track'], ['overview', 'Overview'], ['clients', 'Clients'], ['invoices', 'Invoices'],
+  ['today', 'Today'], ['track', 'Track'], ['overview', 'Overview'], ['clients', 'Clients'], ['invoices', 'Invoices'],
   ['expenses', 'Expenses'], ['money', 'Money'], ['settings', 'Settings'],
 ];
-const TABS: [View, string][] = [['track', 'Track'], ['overview', 'Overview'], ['invoices', 'Invoices'], ['money', 'Money'], ['more', 'More']];
-const UNDER_MORE: View[] = ['clients', 'expenses', 'settings', 'more'];
+const TABS: [View, string][] = [['today', 'Today'], ['track', 'Track'], ['overview', 'Overview'], ['invoices', 'Invoices'], ['more', 'More']];
+const UNDER_MORE: View[] = ['money', 'clients', 'expenses', 'settings', 'more'];
 
 function TimerPill() {
-  const { data, stopTimer, toast } = useKita();
+  const { data, stopTimer } = useKita();
   const t = data.timer;
   const now = useNow(!!t);
   if (!t) {
@@ -28,10 +29,7 @@ function TimerPill() {
       <span className="live" aria-hidden="true" />
       <span className="who"><b>{c ? c.name : 'Unknown client'}</b>{t.task ? ` · ${t.task}` : ''}</span>
       <b>{clockText(now - t.startedAt)}</b>
-      <button className="btn sm stop" onClick={async () => {
-        const m = await stopTimer(true);
-        toast(m ? `Saved ${formatHM(m)}` : 'Less than a minute, so nothing was saved.');
-      }}>Stop</button>
+      <button className="btn sm stop" onClick={() => stopTimer(true)}>Stop</button>
     </div>
   );
 }
@@ -60,6 +58,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <button key={k} onClick={() => go(k)} aria-current={tab === k ? 'page' : undefined}><Icon name={k} /><span>{label}</span></button>
         ))}
       </div>
+      <AskDoneSheet />
     </>
   );
 }

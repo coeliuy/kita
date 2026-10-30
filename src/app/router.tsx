@@ -4,14 +4,14 @@
  */
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
-export const VIEWS = ['track', 'overview', 'clients', 'invoices', 'expenses', 'money', 'settings', 'more'] as const;
+export const VIEWS = ['today', 'track', 'overview', 'clients', 'invoices', 'expenses', 'money', 'settings', 'more'] as const;
 export type View = (typeof VIEWS)[number];
 
 const isView = (s: string): s is View => (VIEWS as readonly string[]).includes(s);
 
 function viewFromLocation(): View {
   const seg = location.pathname.replace(/^\/app\/?/, '').split('/')[0] ?? '';
-  return isView(seg) ? seg : 'track';
+  return isView(seg) ? seg : 'today';
 }
 
 const Ctx = createContext<{ view: View; go: (v: View) => void } | null>(null);
