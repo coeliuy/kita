@@ -18,6 +18,8 @@ Being rebuilt from the single-file prototype (`prototype/kita.html`) into a full
 - [ ] Step 7: Privacy policy, terms and launch checks
 - [ ] Step 8: Custom domain
 
+See [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) for detailed instructions for each remaining step.
+
 ## Working on it
 
 You need Node.js 22 or later.
