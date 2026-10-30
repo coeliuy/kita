@@ -25,17 +25,18 @@ export class SupabaseStore implements KitaStore {
   async load(): Promise<KitaData> {
     const d = emptyData();
     // Supabase returns at most 1,000 rows per request, so read big tables a page at a time.
-    const all = async (table: string) => {
+    // Pages need a fixed order; `orderBy` must be a column the table has.
+    const all = async (table: string, orderBy = 'id') => {
       const rows: Record<string, unknown>[] = [];
       for (let from = 0; ; from += PAGE) {
-        const page = check(await this.sb.from(table).select('*').order('id').range(from, from + PAGE - 1)) ?? [];
+        const page = check(await this.sb.from(table).select('*').order(orderBy).range(from, from + PAGE - 1)) ?? [];
         rows.push(...page);
         if (page.length < PAGE) return { data: rows, error: null };
       }
     };
     const [settings, years, timer, clients, entries, invoices, expenses, categories, tasks] = await Promise.all([
       this.sb.from('settings').select('*').maybeSingle(),
-      all('year_settings'),
+      all('year_settings', 'tax_year'),
       this.sb.from('timers').select('*').maybeSingle(),
       all(TABLES.clients.table),
       all(TABLES.entries.table),
