@@ -1,0 +1,9 @@
+// Cloudflare settings. The site is static files built into dist/ by `npm run build`;
+// public/_redirects sends every /app/... address to the app.
+{
+  "name": "kita",
+  "compatibility_date": "2025-06-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}
