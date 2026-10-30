@@ -221,3 +221,18 @@ td input{padding:6px 8px}
 a.menu-item{color:inherit;text-decoration:none}
 .l-top .brand{color:inherit;text-decoration:none}
 body.home::before{background:var(--bg)}
+
+/* sign in and sign up */
+.auth{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 16px 40px}
+.auth>.brand{color:inherit;text-decoration:none;margin-bottom:28px}
+.auth-card{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:28px}
+.auth-card h1{font-size:24px;margin-bottom:6px}
+.auth-card .sub{margin-bottom:6px}
+.auth-card form,.auth-card .callout{margin-top:18px}
+.auth-card .btn.primary.lg{width:100%}
+.auth-google{width:100%;margin-top:18px}
+.auth-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin-top:18px}
+.auth-or::before,.auth-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.auth-links{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:18px;font-size:14px;color:var(--muted)}
+.auth-links .btn.link{color:var(--accent)}
+.auth-foot{margin-top:18px;text-align:center}

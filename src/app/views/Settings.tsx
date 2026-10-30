@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ratesForTaxYear, taxYearLabel, taxYearOf, type PaymentTerms } from '../../lib/money';
 import { ConfirmButton, NumberField, TaxYearSelect } from '../components/ui';
 import { download, entriesCsv } from '../lib/files';
-import { today } from '../lib/format';
+import { today, uid } from '../lib/format';
+import { importBackup, ImportError } from '../lib/importBackup';
 import { ratesFor, yearSettings } from '../lib/selectors';
 import { useKita } from '../store/KitaProvider';
 import type { RateOverrides, Settings as SettingsT, Theme } from '../store/types';
@@ -25,7 +26,24 @@ function Text({ k, label, type = 'text', area }: { k: keyof SettingsT; label: st
 }
 
 export function Settings() {
-  const { data, storeKind, updateSettings, updateYear, loadDemo, clearData, toast } = useKita();
+  const { data, storeKind, account, updateSettings, updateYear, loadDemo, clearData, importData, toast } = useKita();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const onImport = async (file: File | undefined) => {
+    if (!file) return;
+    setImporting(true);
+    try {
+      const result = importBackup(JSON.parse(await file.text()), data, today(), uid);
+      await importData(result);
+      const parts = [`${result.clients.length} clients`, `${result.entries.length} time entries`, `${result.invoices.length} invoices`, `${result.expenses.length} expenses`];
+      toast(`Imported ${parts.join(', ')}${result.skipped ? `. Skipped ${result.skipped} demo or unreadable records.` : '.'}`);
+    } catch (e) {
+      toast(e instanceof ImportError ? e.message : 'That file couldn’t be read. Choose the .json file from “Download everything”.');
+    } finally {
+      setImporting(false);
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  };
   const s = data.settings;
   const [ty, setTy] = useState(() => taxYearOf(today()));
   const r = ratesFor(data, ty);
@@ -43,6 +61,15 @@ export function Settings() {
         <h1>Settings</h1>
         <p className="sub" style={{ marginTop: 6 }}>{storeKind === 'cloud' ? 'Your data is saved to your account and is private to you.' : 'Your data is saved in this browser only.'}</p>
       </section>
+      {account && (
+        <section>
+          <div className="head"><h2>Your account</h2></div>
+          <div className="row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+            <p>Signed in as <b>{account.email}</b></p>
+            <button className="btn" onClick={account.signOut}>Sign out</button>
+          </div>
+        </section>
+      )}
       <section>
         <div className="head"><h2>Your details on invoices</h2></div>
         <div className="grid"><Text k="name" label="Your name" /><Text k="business" label="Business name (optional)" /><Text k="email" label="Email" type="email" /></div>
@@ -100,6 +127,11 @@ export function Settings() {
           <button className="btn" onClick={() => download('kita-backup.json', JSON.stringify(data, null, 2), 'application/json')}>Download everything (JSON)</button>
         </div>
         <p className="fine" style={{ marginTop: 10 }}>To use your time in Google Sheets, download the CSV and choose File, then Import, in Sheets.</p>
+        <div className="row" style={{ marginTop: 16, alignItems: 'center' }}>
+          <button className="btn" disabled={importing} onClick={() => fileInput.current?.click()}>{importing ? 'Importing…' : 'Import a backup (JSON)'}</button>
+          <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={e => onImport(e.target.files?.[0])} />
+          <p className="fine">Bring in a “Download everything” file, including one from the earlier single-page version of Kita. It adds to what’s here and doesn’t replace anything.</p>
+        </div>
         <div className="row" style={{ marginTop: 16 }}>
           {data.clients.some(c => c.demo)
             ? <button className="btn" onClick={async () => { await clearData(true); toast('Demo data removed'); }}>Remove demo data</button>

@@ -6,7 +6,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { cleanLines, dueDate, invoiceTotals, type InvoiceLine, type ISODate, type MonthKey } from '../../lib/money';
 import { buildDemoData } from '../lib/demo';
 import { today, uid, ymd } from '../lib/format';
+import type { ImportResult } from '../lib/importBackup';
 import { clientById, yearSettings } from '../lib/selectors';
+import type { Account } from '../auth/AuthGate';
 import type { KitaStore } from './store';
 import { DEFAULT_SETTINGS, DEFAULT_YEAR, type Client, type Collection, type Expense, type Invoice, type KitaData, type Settings, type TimeEntry, type YearSettings } from './types';
 
@@ -22,6 +24,8 @@ export interface NewInvoice {
 interface KitaContext {
   data: KitaData;
   storeKind: KitaStore['kind'];
+  /** The signed-in account, or null when using browser storage. */
+  account: Account | null;
   toast: (message: string) => void;
   saveClient: (c: Client) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
@@ -40,6 +44,7 @@ interface KitaContext {
   updateYear: (taxYear: number, patch: Partial<YearSettings>) => void;
   loadDemo: () => Promise<void>;
   clearData: (onlyDemo: boolean) => Promise<void>;
+  importData: (r: ImportResult) => Promise<void>;
 }
 
 const Ctx = createContext<KitaContext | null>(null);
@@ -50,7 +55,7 @@ export function useKita(): KitaContext {
   return v;
 }
 
-export function KitaProvider({ store, children }: { store: KitaStore; children: ReactNode }) {
+export function KitaProvider({ store, account = null, children }: { store: KitaStore; account?: Account | null; children: ReactNode }) {
   const [data, setData] = useState<KitaData | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [toastMsg, setToastMsg] = useState<{ text: string; n: number } | null>(null);
@@ -66,14 +71,20 @@ export function KitaProvider({ store, children }: { store: KitaStore; children: 
         run();
       }
     };
-    const onHide = () => document.visibilityState === 'hidden' && flushPending();
+    // Coming back to the tab: pick up changes made on other devices (cloud only),
+    // unless there are changes here still waiting to be saved.
+    const refresh = () => {
+      if (store.kind !== 'cloud' || !ref.current || pending.current.size) return;
+      store.load().then(d => { if (!pending.current.size) { ref.current = d; setData(d); } }, e => console.warn(e));
+    };
+    const onHide = () => (document.visibilityState === 'hidden' ? flushPending() : refresh());
     addEventListener('pagehide', flushPending);
     document.addEventListener('visibilitychange', onHide);
     return () => {
       removeEventListener('pagehide', flushPending);
       document.removeEventListener('visibilitychange', onHide);
     };
-  }, []);
+  }, [store]);
 
   const toast = useCallback((text: string) => setToastMsg(t => ({ text, n: (t?.n ?? 0) + 1 })), []);
 
@@ -228,10 +239,26 @@ export function KitaProvider({ store, children }: { store: KitaStore; children: 
           next++;
         }
         commit({ ...cur(), settings: { ...cur().settings, nextInv: next } });
+        // Clients, then invoices, then the time and expenses that point at them.
         await upsert('clients', demo.clients);
-        await upsert('entries', demo.entries);
         await upsert('invoices', invoices);
+        await upsert('entries', demo.entries);
         await upsert('expenses', demo.expenses);
+      },
+
+      importData: async (r: ImportResult) => {
+        await upsert('clients', r.clients);
+        await upsert('invoices', r.invoices);
+        await upsert('entries', r.entries);
+        await upsert('expenses', r.expenses);
+        const settings = { ...cur().settings, ...r.settings };
+        commit({ ...cur(), settings });
+        await save(store.saveSettings(settings));
+        for (const y of r.years) {
+          const year = { ...yearSettings(cur(), y.taxYear), ...y.patch };
+          commit({ ...cur(), years: { ...cur().years, [y.taxYear]: year } });
+          await save(store.saveYear(y.taxYear, year));
+        }
       },
 
       clearData: async (onlyDemo: boolean) => {
@@ -260,7 +287,7 @@ export function KitaProvider({ store, children }: { store: KitaStore; children: 
   if (!data) return <div className="loading">Loading your data…</div>;
 
   return (
-    <Ctx.Provider value={{ data, storeKind: store.kind, toast, ...actions }}>
+    <Ctx.Provider value={{ data, storeKind: store.kind, account, toast, ...actions }}>
       {children}
       <div id="toast" role="status" aria-live="polite" className={toastMsg ? 'show' : ''}>
         {toastMsg?.text}
