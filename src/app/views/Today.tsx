@@ -5,6 +5,7 @@ import { TimerCard } from '../components/TimerCard';
 import { Icon, plural } from '../components/ui';
 import { gbp0, parseYmd, thisMonth, today } from '../lib/format';
 import { entriesIn, monthSummary, yearSummary } from '../lib/selectors';
+import { capacity } from '../lib/planning';
 import { comingUp, isOverdueTask, tasksForToday } from '../lib/tasks';
 import { useRouter, type View } from '../router';
 import { useKita } from '../store/KitaProvider';
@@ -63,6 +64,10 @@ function nudges(d: KitaData, t: string): [string, View, string][] {
   }
   const late = d.tasks.filter(x => isOverdueTask(x, t));
   if (late.length) out.push(['warn', 'track', `${late.length} ${plural(late.length, 'task is', 'tasks are')} past due.`]);
+  const cap = capacity(d, t, t);
+  if (cap.capacity && cap.committed > cap.capacity) {
+    out.push(['warn', 'overview', `You’re committed to ${hours1(cap.committed * 60)} hours a week, more than your ${cap.capacity}-hour capacity.`]);
+  }
   return out;
 }
 

@@ -136,6 +136,12 @@ export function Settings() {
       </section>
       <Categories />
       <section>
+        <div className="head"><h2>Planning</h2></div>
+        <div style={{ maxWidth: 260 }}>
+          <NumberField label="Hours you can work each week" value={s.capacity} step={0.5} placeholder="e.g. 30" onChange={v => updateSettings({ capacity: Math.min(168, v) })} />
+        </div>
+      </section>
+      <section>
         <div className="head">
           <h2>Tax rates</h2>
           <TaxYearSelect value={ty} onChange={setTy} />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { formatHM, monthEnd, monthLabel, shiftMonth, sumMinutes, taxYearLabel, taxYearOf, type MonthKey } from '../../lib/money';
-import { Icon, plural } from '../components/ui';
+import { addDays, formatHM, monthEnd, monthLabel, shiftMonth, sumMinutes, taxYearLabel, taxYearOf, type MonthKey } from '../../lib/money';
+import { Icon, NumberField, plural } from '../components/ui';
+import { capacity, insights, whatIf } from '../lib/planning';
 import { clientReportPdf, download } from '../lib/files';
 import { fmtDate, gbp, gbp0, hrsTxt, parseYmd, thisMonth, today } from '../lib/format';
 import { monthSummary, yearSummary, type ClientMonth } from '../lib/selectors';
@@ -39,6 +40,71 @@ function ClientRow({ r, maxMinutes, onReport }: { r: ClientMonth; maxMinutes: nu
         </div>
       )}
     </div>
+  );
+}
+
+function CapacitySection() {
+  const { data, updateSettings } = useKita();
+  const [extra, setExtra] = useState(0);
+  const t = today();
+  const sunday = addDays(t, 6 - ((parseYmd(t).getDay() + 6) % 7));
+  const c = capacity(data, t, sunday);
+  if (!c.capacity) {
+    return (
+      <section>
+        <div className="head"><h2>Capacity</h2></div>
+        <p className="sub" style={{ marginBottom: 12 }}>How many hours a week can you work? Kita will show how much is already committed and whether you have room for more.</p>
+        <div style={{ maxWidth: 260 }}>
+          <NumberField label="Hours you can work each week" value={0} step={0.5} placeholder="e.g. 30" onChange={v => updateSettings({ capacity: Math.min(168, v) })} />
+        </div>
+      </section>
+    );
+  }
+  const scale = Math.max(c.capacity, c.committed + extra) || 1;
+  const h1 = (n: number) => String(Math.round(n * 10) / 10);
+  return (
+    <section>
+      <div className="head"><h2>Capacity</h2><span className="sub">{c.capacity} hours a week</span></div>
+      <div className="figs" style={{ marginBottom: 16 }}>
+        <div className="fig hero"><div className="v" style={c.free < 0 ? { color: 'var(--bad)' } : undefined}>{h1(Math.abs(c.free))} h</div><div className="l">{c.free >= 0 ? 'free each week' : 'over your capacity each week'}</div></div>
+        <div className="fig"><div className="v">{h1(c.committed)} h</div><div className="l">committed a week ({Math.round((c.committed / c.capacity) * 100)}%)</div></div>
+        {c.plannedThisWeek > 0 && <div className="fig"><div className="v">{formatHM(c.plannedThisWeek)}</div><div className="l">of task estimates due this week</div></div>}
+      </div>
+      <div className="capwrap">
+        <div className="stack-bar" role="img" aria-label="Committed hours by client against capacity">
+          {c.rows.map(r => <i key={r.client.id} style={{ width: `${(r.hours / scale) * 100}%`, background: r.client.color }} title={`${r.client.name}: ${h1(r.hours)} h`} />)}
+          {extra > 0 && <i style={{ width: `${(extra / scale) * 100}%`, background: 'repeating-linear-gradient(45deg,var(--muted) 0 3px,transparent 3px 7px)' }} title={`What if: ${extra} h`} />}
+        </div>
+        <span className="cap-mk" style={{ left: `calc(${(c.capacity / scale) * 100}% - 1px)` }} />
+      </div>
+      <div style={{ marginTop: 12 }}>
+        {c.rows.map(r => (
+          <div className="kv" key={r.client.id}>
+            <span><span className="dot" style={{ display: 'inline-block', background: r.client.color, marginRight: 8 }} />{r.client.name}</span>
+            <span>{h1(r.hours)} h <span className="muted small">({r.source})</span></span>
+          </div>
+        ))}
+      </div>
+      <div className="sep" />
+      <div style={{ maxWidth: 300 }}>
+        <NumberField label="What if you took on more? (hours a week)" value={extra} step={0.5} placeholder="e.g. 10" onChange={setExtra} />
+      </div>
+      <p style={{ marginTop: 10 }}>{whatIf(c, extra)}</p>
+      <p className="fine" style={{ marginTop: 8 }}>Set expected weekly hours on a client to override these figures, for example when a client is about to increase your hours. Change your weekly capacity in Settings.</p>
+    </section>
+  );
+}
+
+function InsightsSection() {
+  const { data } = useKita();
+  const items = insights(data, today());
+  return (
+    <section>
+      <div className="head"><h2>Insights</h2><span className="sub">Last 3 months</span></div>
+      {items.length
+        ? items.map(i => <div key={i.text} className={`insight ${i.tone}`}>{i.text}</div>)
+        : <p className="muted">Insights about your rates, retainers and estimates appear once you’ve tracked a few weeks of work.</p>}
+    </section>
   );
 }
 
@@ -86,6 +152,7 @@ export function Overview() {
           <div className="fig"><div className="v">{gbp0(m.unbilled)}</div><div className="l">Not invoiced yet</div></div>
         </div>
       </section>
+      <CapacitySection />
       <section>
         <div className="head"><h2>Hours by day</h2></div>
         <div className="cols" role="img" aria-label="Hours tracked per day">
@@ -104,6 +171,7 @@ export function Overview() {
         {rows.length ? rows.map(r => <ClientRow key={r.client.id} r={r} maxMinutes={maxMinutes} onReport={() => report(r.client.id)} />) : <div className="empty">No time tracked in {monthLabel(month)}.</div>}
         {m.unbilled > 0 && <p style={{ marginTop: 14 }}><button className="btn primary" onClick={() => startInvoice(rows.find(r => r.unbilled > 0)?.client.id ?? null, month)}>Create an invoice</button></p>}
       </section>
+      <InsightsSection />
       <section>
         <div className="head"><h2>Tax year {taxYearLabel(ty)}</h2><button className="btn sm" onClick={() => go('money')}>See take-home and tax</button></div>
         <div className="figs">
