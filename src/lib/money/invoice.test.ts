@@ -78,7 +78,35 @@ describe('draftInvoiceLines: hourly', () => {
   });
 
   it('gives one blank line when there is nothing to bill', () => {
-    expect(draftInvoiceLines(hourly, '2026-10', [], []).lines).toEqual([{ desc: '', qty: 1, unit: 0, kind: 'custom' }]);
+    expect(draftInvoiceLines(hourly, '2026-10', [], []).lines).toEqual([{ desc: '', detail: '', qty: 1, unit: 0, kind: 'custom' }]);
+  });
+
+  it('can group by something else (such as category), largest first, with details', () => {
+    type E = TimeEntry & { cat: string };
+    const es: E[] = [
+      { ...entry(30, { clientId: 'h', task: 'Newsletter' }), cat: 'Email' },
+      { ...entry(90, { clientId: 'h', task: 'Posts' }), cat: 'Social' },
+      { ...entry(60, { clientId: 'h', task: 'Stories' }), cat: 'Social' },
+    ];
+    const d = draftInvoiceLines(hourly, '2026-10', es, [], {
+      groupBy: e => e.cat,
+      describe: list => list.map(e => e.task).join('; '),
+    });
+    expect(d.lines).toEqual([
+      { desc: 'Social (October 2026)', detail: 'Posts; Stories', qty: 2.5, unit: 45, kind: 'time' },
+      { desc: 'Email (October 2026)', detail: 'Newsletter', qty: 0.5, unit: 45, kind: 'time' },
+    ]);
+  });
+
+  it('describes retainer and fixed-fee lines too, but not overage', () => {
+    const describe = (_: TimeEntry[], kind: string) => `about ${kind}`;
+    const r = draftInvoiceLines(retainer, '2026-10', [entry(28 * 60)], [], { describe });
+    expect(r.lines.map(l => l.detail)).toEqual(['about retainer_fee', undefined]);
+    expect(draftInvoiceLines(fixed, '2026-10', [], [], { describe }).lines[0]!.detail).toBe('about fixed_fee');
+  });
+
+  it('leaves out empty details', () => {
+    expect(draftInvoiceLines(fixed, '2026-10', [], [], { describe: () => '' }).lines[0]).not.toHaveProperty('detail');
   });
 });
 

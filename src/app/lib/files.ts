@@ -1,8 +1,8 @@
 /** Downloads: invoice PDFs and CSV/JSON exports. */
-import { lineAmount, quarterTotals, taxYearLabel } from '../../lib/money';
+import { billableMinutes, formatHM, lineAmount, monthEnd, monthLabel, quarterTotals, retainerUsage, sumMinutes, taxYearLabel } from '../../lib/money';
 import type { Invoice, KitaData } from '../store/types';
 import { EXPENSE_CATEGORIES } from './categories';
-import { fmtDate, gbp } from './format';
+import { fmtDate, gbp, parseYmd } from './format';
 
 export function download(filename: string, data: Blob | string, type = 'text/plain') {
   const blob = data instanceof Blob ? data : new Blob([data], { type });
@@ -89,12 +89,24 @@ export async function invoicePdf(inv: Invoice): Promise<Blob> {
   y += 6;
   for (const l of inv.lines) {
     const desc = doc.splitTextToSize(l.desc || '', 95) as string[];
-    if (y + desc.length * 5 > 265) { doc.addPage(); y = 24; }
+    doc.setFontSize(8.5);
+    const detail = l.detail ? (doc.splitTextToSize(l.detail, 95) as string[]) : [];
+    doc.setFontSize(10);
+    if (y + desc.length * 5 + detail.length * 4 > 265) { doc.addPage(); y = 24; }
     doc.text(desc, L, y);
     doc.text(String(+l.qty), 130, y, { align: 'right' });
     doc.text(gbp(l.unit), 160, y, { align: 'right' });
     doc.text(gbp(lineAmount(l)), R, y, { align: 'right' });
-    y += desc.length * 5 + 3;
+    y += desc.length * 5;
+    if (detail.length) {
+      doc.setFontSize(8.5);
+      doc.setTextColor(110);
+      doc.text(detail, L, y - 1);
+      doc.setTextColor(20);
+      doc.setFontSize(10);
+      y += detail.length * 4;
+    }
+    y += 3;
   }
   doc.line(L, y, R, y);
   y += 7;
@@ -120,3 +132,91 @@ export async function invoicePdf(inv: Invoice): Promise<Blob> {
   if (inv.note) for (const l of doc.splitTextToSize(inv.note, 170) as string[]) { doc.text(l, L, y); y += 5; }
   return doc.output('blob');
 }
+
+/**
+ * A monthly report for a client: hours, retainer use, tasks completed, time by
+ * category and a full work log. Useful to send retainer clients with their invoice.
+ */
+export async function clientReportPdf(d: KitaData, clientId: string, month: string): Promise<{ filename: string; blob: Blob }> {
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const s = d.settings;
+  const c = d.clients.find(x => x.id === clientId);
+  const name = c?.name ?? 'Client';
+  const from = `${month}-01`, to = monthEnd(month);
+  const es = d.entries.filter(e => e.clientId === clientId && e.date >= from && e.date <= to).sort((a, b) => a.date.localeCompare(b.date));
+  const catName = (id: string) => d.categories.find(x => x.id === id)?.name ?? 'General';
+  const L = 20, R = 190;
+  let y = 24;
+  const page = (need: number) => { if (y + need > 278) { doc.addPage(); y = 24; } };
+  const head = (t: string) => {
+    y += 4; page(16);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.text(t, L, y);
+    y += 3; doc.setDrawColor(210); doc.line(L, y, R, y); y += 6;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+  };
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.text('Monthly report', L, y);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.text(`${name}, ${monthLabel(month)}`, L, y + 8);
+  const by = s.business || s.name;
+  if (by) { doc.setFontSize(9); doc.setTextColor(110); doc.text(`Prepared by ${by}`, L, y + 14); doc.setTextColor(20); }
+  y += 28;
+
+  // Summary figures
+  const done = d.tasks.filter(t => t.clientId === clientId && t.status === 'done' && t.doneAt && t.doneAt >= from && t.doneAt <= to);
+  const summary: [string, string][] = [['Hours worked', formatHM(sumMinutes(es))]];
+  if (c?.billing === 'retainer' && c.included > 0) {
+    const u = retainerUsage(c, billableMinutes(es));
+    summary.push(['Retainer hours', formatHM(c.included * 60)]);
+    summary.push(u.overHours > 0 ? ['Over the retainer', formatHM(u.overHours * 60)] : ['Hours remaining', formatHM(u.leftHours * 60)]);
+  }
+  summary.push(['Tasks completed', String(done.length)]);
+  summary.forEach(([label, value], i) => {
+    const x = L + i * 43;
+    doc.setFontSize(9); doc.setTextColor(110); doc.text(label, x, y);
+    doc.setTextColor(20); doc.setFontSize(18); doc.text(value, x, y + 9);
+  });
+  doc.setFontSize(10);
+  y += 18;
+
+  head('Time by category');
+  const g = new Map<string, number>();
+  for (const e of es) g.set(catName(e.categoryId), (g.get(catName(e.categoryId)) ?? 0) + e.minutes);
+  const max = Math.max(1, ...g.values());
+  for (const [k, m] of [...g].sort((a, b) => b[1] - a[1])) {
+    page(8);
+    doc.text(k, L, y);
+    doc.setFillColor(194, 65, 12); doc.rect(80, y - 3.2, (90 * m) / max, 3.6, 'F');
+    doc.text(formatHM(m), R, y, { align: 'right' });
+    y += 7;
+  }
+  if (!g.size) { doc.setTextColor(110); doc.text('No time tracked this month.', L, y); doc.setTextColor(20); y += 7; }
+
+  if (done.length) {
+    head('Completed this month');
+    for (const t of done) {
+      const lines = doc.splitTextToSize(t.title + (t.notes ? `: ${t.notes}` : ''), 160) as string[];
+      page(lines.length * 5 + 2);
+      doc.text('•', L, y); doc.text(lines, L + 5, y);
+      y += lines.length * 5 + 1.5;
+    }
+  }
+
+  head('Work log');
+  doc.setFontSize(8.5); doc.setTextColor(110);
+  doc.text('Date', L, y); doc.text('Category', 42, y); doc.text('Work done', 82, y); doc.text('Time', R, y, { align: 'right' });
+  doc.setTextColor(20); y += 5;
+  for (const e of es) {
+    const work = doc.splitTextToSize([e.task, e.note].filter(Boolean).join(': ') || '-', 90) as string[];
+    const cat = doc.splitTextToSize(catName(e.categoryId), 36) as string[];
+    const h = Math.max(work.length, cat.length) * 4;
+    page(h + 2);
+    doc.text(fmtDateShort(e.date), L, y); doc.text(cat, 42, y); doc.text(work, 82, y); doc.text(formatHM(e.minutes), R, y, { align: 'right' });
+    y += h + 2;
+  }
+
+  const slug = name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'client';
+  return { filename: `${slug}-report-${month}.pdf`, blob: doc.output('blob') };
+}
+
+const fmtDateShort = (date: string) => parseYmd(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });

@@ -3,8 +3,9 @@
  * on Overview can open it on the Invoices screen.
  */
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { draftInvoiceLines, monthEnd, monthStart, type MonthKey } from '../../lib/money';
+import { blankLine, draftInvoiceLines, monthEnd, monthStart, type MonthKey } from '../../lib/money';
 import { thisMonth, today } from '../lib/format';
+import { invoiceDraftOptions } from '../lib/invoiceDetails';
 import { activeClients, clientById, entriesIn } from '../lib/selectors';
 import { useRouter } from '../router';
 import { useKita, type NewInvoice } from '../store/KitaProvider';
@@ -28,12 +29,13 @@ export function useDraftState() {
 /** Lines and linked entries for a client and month, from tracked time. */
 export function prefill(data: KitaData, clientId: string, month: MonthKey) {
   const client = clientById(data, clientId);
-  if (!client) return { lines: [{ desc: '', qty: 1, unit: 0, kind: 'custom' as const }], entryIds: [] };
+  if (!client) return { lines: [blankLine()], entryIds: [] };
   return draftInvoiceLines(
     client,
     month,
     entriesIn(data, monthStart(month), monthEnd(month), clientId),
     data.invoices.filter(i => i.clientId === clientId),
+    invoiceDraftOptions(data.categories, data.tasks, data.settings.invNotes),
   );
 }
 

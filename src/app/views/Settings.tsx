@@ -126,6 +126,9 @@ export function Settings() {
           </label>
         </div>
         <div className="row" style={{ marginTop: 12, alignItems: 'center' }}>
+          <label className="check"><input type="checkbox" checked={s.invNotes} onChange={e => updateSettings({ invNotes: e.target.checked })} /> Show task names and notes under invoice lines</label>
+        </div>
+        <div className="row" style={{ marginTop: 12, alignItems: 'center' }}>
           <label className="check"><input type="checkbox" checked={s.vatRegistered} onChange={e => updateSettings({ vatRegistered: e.target.checked })} /> I’m VAT registered</label>
           {s.vatRegistered && <div style={{ maxWidth: 140 }}><NumberField label="VAT rate (%)" value={s.vatRate} onChange={v => updateSettings({ vatRate: v })} /></div>}
           {s.vatRegistered && <div style={{ minWidth: 200 }}><Text k="vatNumber" label="VAT registration number" /></div>}

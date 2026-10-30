@@ -2,6 +2,7 @@
 import { addDays, draftInvoiceLines, dueDate, invoiceTotals, monthEnd, monthOf, monthStart, shiftMonth, type ISODate } from '../../lib/money';
 import type { Category, Client, Expense, Invoice, Task, TimeEntry } from '../store/types';
 import { uid } from './format';
+import { invoiceDraftOptions } from './invoiceDetails';
 
 export const COLORS = ['#1F6F5C', '#3B6FB6', '#B5541E', '#7A4FB0', '#A1306B', '#5E7F1E', '#2C8A9E', '#8A6D1F'];
 
@@ -115,7 +116,7 @@ export function buildDemoData(today: ISODate, existingCategories: Category[] = [
   const invoices: Omit<Invoice, 'number'>[] = [];
   for (const c of clients.slice(0, 2)) {
     const own = entries.filter(e => e.clientId === c.id && e.date >= monthStart(prev) && e.date <= monthEnd(prev));
-    const draft = draftInvoiceLines(c, prev, own, []);
+    const draft = draftInvoiceLines(c, prev, own, [], invoiceDraftOptions([...existingCategories, ...categories], tasks, true));
     const issueDate = monthEnd(prev);
     const paid = c.billing === 'hourly';
     const paidOn = addDays(issueDate, 10);

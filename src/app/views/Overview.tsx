@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { formatHM, monthEnd, monthLabel, shiftMonth, sumMinutes, taxYearLabel, taxYearOf, type MonthKey } from '../../lib/money';
-import { plural } from '../components/ui';
+import { Icon, plural } from '../components/ui';
+import { clientReportPdf, download } from '../lib/files';
 import { fmtDate, gbp, gbp0, hrsTxt, parseYmd, thisMonth, today } from '../lib/format';
 import { monthSummary, yearSummary, type ClientMonth } from '../lib/selectors';
 import { useRouter } from '../router';
 import { useKita } from '../store/KitaProvider';
 import { useInvoiceDraft } from './invoiceDraft';
 
-function ClientRow({ r, maxMinutes }: { r: ClientMonth; maxMinutes: number }) {
+function ClientRow({ r, maxMinutes, onReport }: { r: ClientMonth; maxMinutes: number; onReport: () => void }) {
   const c = r.client;
   let bar, note;
   if (r.usage) {
@@ -31,16 +32,29 @@ function ClientRow({ r, maxMinutes }: { r: ClientMonth; maxMinutes: number }) {
       <div className="nm"><span className="dot" style={{ background: c.color }} /><span>{c.name}</span></div>
       {bar}
       <div className="num">{hrsTxt(r.minutes)} · {gbp0(r.value)} · <span className="muted">{r.hourly ? `${gbp0(r.hourly)}/h` : '—'}</span></div>
-      {note && <div className="note">{note}</div>}
+      {(note || r.minutes > 0) && (
+        <div className="note row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{note}</span>
+          {r.minutes > 0 && <button className="btn link" onClick={onReport}><Icon name="report" />Client report</button>}
+        </div>
+      )}
     </div>
   );
 }
 
 export function Overview() {
-  const { data } = useKita();
+  const { data, toast } = useKita();
   const { go } = useRouter();
   const startInvoice = useInvoiceDraft();
   const [month, setMonth] = useState<MonthKey>(thisMonth);
+  const report = async (clientId: string) => {
+    try {
+      const { filename, blob } = await clientReportPdf(data, clientId, month);
+      download(filename, blob);
+    } catch {
+      toast('The report couldn’t be made. Check your connection and try again.');
+    }
+  };
   const m = monthSummary(data, month);
   const days = +monthEnd(month).slice(8);
   const perDay = [...Array(days)].map((_, i) => {
@@ -87,7 +101,7 @@ export function Overview() {
       </section>
       <section>
         <div className="head"><h2>By client</h2><span className="sub">Hours · value · what you actually earn per hour</span></div>
-        {rows.length ? rows.map(r => <ClientRow key={r.client.id} r={r} maxMinutes={maxMinutes} />) : <div className="empty">No time tracked in {monthLabel(month)}.</div>}
+        {rows.length ? rows.map(r => <ClientRow key={r.client.id} r={r} maxMinutes={maxMinutes} onReport={() => report(r.client.id)} />) : <div className="empty">No time tracked in {monthLabel(month)}.</div>}
         {m.unbilled > 0 && <p style={{ marginTop: 14 }}><button className="btn primary" onClick={() => startInvoice(rows.find(r => r.unbilled > 0)?.client.id ?? null, month)}>Create an invoice</button></p>}
       </section>
       <section>

@@ -127,7 +127,7 @@ export function importBackup(raw: unknown, existing: KitaData, today: string, ne
     const clientId = known(i.clientId);
     const client = clientById.get(clientId);
     const lines: InvoiceLine[] = arr(i.lines).map(l => ({
-      desc: s(l.desc), qty: n(l.qty), unit: n(l.unit),
+      desc: s(l.desc), ...(l.detail ? { detail: s(l.detail) } : {}), qty: n(l.qty), unit: n(l.unit),
       kind: (['time', 'retainer_fee', 'overage', 'fixed_fee', 'custom'] as const).includes(l.kind as InvoiceLineKind)
         ? (l.kind as InvoiceLineKind) : lineKind(s(l.desc), billingOf.get(clientId)),
     }));

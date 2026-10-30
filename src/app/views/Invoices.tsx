@@ -66,7 +66,11 @@ function InvoiceBuilder() {
             <tbody>
               {draft.lines.map((l, i) => (
                 <tr key={i}>
-                  <td><input aria-label="Description" value={l.desc} onChange={e => setLine(i, { desc: e.target.value })} /></td>
+                  <td>
+                    <input aria-label="Description" value={l.desc} onChange={e => setLine(i, { desc: e.target.value })} />
+                    <input className="detail" aria-label="Details under this line" value={l.detail ?? ''} placeholder="Details shown under this line (optional)"
+                      onChange={e => setLine(i, { detail: e.target.value })} />
+                  </td>
                   <td><input aria-label="Quantity" type="number" step="0.01" style={{ textAlign: 'right' }} value={l.qty} onChange={e => setLine(i, { qty: e.target.value === '' ? 0 : +e.target.value })} /></td>
                   <td><input aria-label="Unit price" type="number" step="0.01" style={{ textAlign: 'right' }} value={l.unit} onChange={e => setLine(i, { unit: e.target.value === '' ? 0 : +e.target.value })} /></td>
                   <td className="r">{gbp(lineAmount(l))}</td>

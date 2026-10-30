@@ -5,7 +5,7 @@
 import { billableMinutes, overageHoursToBill, retainerInvoicedForMonth, retainerUsage } from './billing';
 import { addDays, monthEnd, monthLabel, monthOf, shiftMonth } from './dates';
 import { roundPence, sumPounds, toPence } from './money';
-import type { Client, Invoice, InvoiceLine, ISODate, MonthKey, PaymentTerms, TimeEntry } from './types';
+import type { Client, Invoice, InvoiceLine, InvoiceLineKind, ISODate, MonthKey, PaymentTerms, TimeEntry } from './types';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -48,12 +48,19 @@ export function cleanLines(lines: InvoiceLine[]): InvoiceLine[] {
   return lines.filter(l => (l.desc || '').trim() || +l.unit);
 }
 
-export const blankLine = (): InvoiceLine => ({ desc: '', qty: 1, unit: 0, kind: 'custom' });
+export const blankLine = (): InvoiceLine => ({ desc: '', detail: '', qty: 1, unit: 0, kind: 'custom' });
 
 export interface InvoiceDraft {
   lines: InvoiceLine[];
   /** Time entries this invoice will mark as invoiced. */
   entryIds: string[];
+}
+
+export interface DraftOptions<E extends TimeEntry> {
+  /** What hourly time is grouped into lines by, e.g. its category. Default: the task name. */
+  groupBy?: (e: E) => string;
+  /** Smaller text under a line, describing the time it covers (e.g. the tasks done). */
+  describe?: (entries: E[], kind: InvoiceLineKind) => string;
 }
 
 /**
@@ -62,37 +69,43 @@ export interface InvoiceDraft {
  * @param monthEntries  all of this client's time entries in the month
  * @param clientInvoices  all of this client's existing invoices
  *
- * - Hourly: one line per task, from billable time not yet invoiced.
+ * - Hourly: one line per group (by default each task), from billable time
+ *   not yet invoiced, largest first.
  * - Retainer: the monthly fee, unless an invoice for that month already has
  *   it, plus overage hours. Overage counts ALL billable hours in the month,
  *   minus overage already invoiced, so invoicing part-way through the month
  *   never loses or double-charges hours.
  * - Fixed fee: whatever is left of the project fee after earlier invoices.
  */
-export function draftInvoiceLines(
+export function draftInvoiceLines<E extends TimeEntry>(
   client: Client,
   month: MonthKey,
-  monthEntries: TimeEntry[],
+  monthEntries: E[],
   clientInvoices: Invoice[],
+  options: DraftOptions<E> = {},
 ): InvoiceDraft {
+  const groupBy = options.groupBy ?? ((e: E) => (e.task || '').trim() || 'Work');
+  const describe = (es: E[], kind: InvoiceLineKind) => {
+    const text = options.describe?.(es, kind) ?? '';
+    return text ? { detail: text } : {};
+  };
   const label = monthLabel(month);
   const uninvoiced = monthEntries.filter(e => !e.invoiceId && e.billable !== false);
   const lines: InvoiceLine[] = [];
 
   if (client.billing === 'hourly') {
-    const byTask = new Map<string, number>();
-    for (const e of uninvoiced) {
-      const task = (e.task || '').trim() || 'Work';
-      byTask.set(task, (byTask.get(task) ?? 0) + e.minutes);
-    }
-    for (const [task, mins] of byTask) {
-      lines.push({ desc: `${task} (${label})`, qty: round2(mins / 60), unit: client.rate || 0, kind: 'time' });
+    const groups = new Map<string, E[]>();
+    for (const e of uninvoiced) groups.set(groupBy(e), [...(groups.get(groupBy(e)) ?? []), e]);
+    const minutes = (es: E[]) => es.reduce((t, e) => t + e.minutes, 0);
+    for (const [name, es] of [...groups].sort((a, b) => minutes(b[1]) - minutes(a[1]))) {
+      lines.push({ desc: `${name} (${label})`, ...describe(es, 'time'), qty: round2(minutes(es) / 60), unit: client.rate || 0, kind: 'time' });
     }
   } else if (client.billing === 'retainer') {
     const done = retainerInvoicedForMonth(clientInvoices, month);
     if (!done.feeInvoiced) {
       lines.push({
         desc: `Monthly retainer, ${label} (${client.included || 0} hours included)`,
+        ...describe(uninvoiced, 'retainer_fee'),
         qty: 1,
         unit: client.fee || 0,
         kind: 'retainer_fee',
@@ -109,7 +122,10 @@ export function draftInvoiceLines(
     );
     const left = roundPence((client.fee || 0) - invoicedSoFar);
     if (left > 0) {
-      lines.push({ desc: invoicedSoFar > 0 ? 'Project fee (balance)' : 'Project fee', qty: 1, unit: left, kind: 'fixed_fee' });
+      lines.push({
+        desc: invoicedSoFar > 0 ? 'Project fee (balance)' : 'Project fee', ...describe(uninvoiced, 'fixed_fee'),
+        qty: 1, unit: left, kind: 'fixed_fee',
+      });
     }
   }
 
