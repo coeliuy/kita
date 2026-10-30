@@ -1,1 +1,2 @@
-/app/*  /app/index.html  200
+# Every /app/... address shows the app (app.html, which Cloudflare serves at /app).
+/app/*  /app  200

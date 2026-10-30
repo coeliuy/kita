@@ -35,7 +35,7 @@ npm run build   # check types and build the live site into dist/
 | Folder | What's in it |
 |---|---|
 | `index.html` | The public homepage. Edit the wording here. |
-| `app/index.html` | The page that loads the app at `/app`. |
+| `app.html` | The page that loads the app at `/app`. |
 | `src/lib/money/` | All money and tax calculations, with tests. See its README. |
 | `src/app/views/` | One file per screen (Track, Overview, Clients, Invoices, Expenses, Money, Settings). |
 | `src/app/store/` | Where data is saved. `localStore.ts` uses the browser; the online database comes in step 3. |

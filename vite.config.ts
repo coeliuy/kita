@@ -6,7 +6,7 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 
 /** In development and preview, serve the app for any /app/... address, as the live host does (see public/_redirects). */
 const rewriteAppPaths = (req: { url?: string }, _res: unknown, next: () => void) => {
-  if (req.url && /^\/app(\/[^.]*)?(\?.*)?$/.test(req.url)) req.url = '/app/index.html';
+  if (req.url && /^\/app(\/[^.]*)?(\?.*)?$/.test(req.url)) req.url = '/app.html';
   next();
 };
 const appFallback = (): Plugin => ({
@@ -19,7 +19,7 @@ export default defineConfig({
   plugins: [react(), appFallback()],
   build: {
     rollupOptions: {
-      input: { home: `${root}index.html`, app: `${root}app/index.html` },
+      input: { home: `${root}index.html`, app: `${root}app.html` },
     },
   },
 });
