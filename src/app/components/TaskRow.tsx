@@ -5,10 +5,11 @@ import { clientById } from '../lib/selectors';
 import { isOverdueTask, taskMinutes } from '../lib/tasks';
 import { useKita } from '../store/KitaProvider';
 import type { Task } from '../store/types';
-import { ConfirmButton, Icon } from './ui';
+import { RowMenu } from './RowMenu';
+import { Icon } from './ui';
 
 export function TaskRow({ task: x, onEdit, showClient }: { task: Task; onEdit?: (id: string) => void; showClient?: boolean }) {
-  const { data, startTask, stopTimer, completeTask, reopenTask, deleteTask, toast } = useKita();
+  const { data, startTask, stopTimer, completeTask, reopenTask, deleteTask } = useKita();
   const running = data.timer?.taskId === x.id;
   const done = x.status === 'done';
   const spent = taskMinutes(data.entries, x.id);
@@ -47,8 +48,12 @@ export function TaskRow({ task: x, onEdit, showClient }: { task: Task; onEdit?: 
       </div>
       <div className="acts">
         {!done && <button className="ibtn ok" title="Mark done" aria-label={`Mark ${x.title} done`} onClick={() => completeTask(x.id)}><Icon name="check" /></button>}
-        {onEdit && <button className="btn link" onClick={() => onEdit(x.id)}>Edit</button>}
-        <ConfirmButton onConfirm={async () => { await deleteTask(x.id); toast('Task deleted. Its tracked time is kept.'); }}>Delete</ConfirmButton>
+        <RowMenu label={`More actions for ${x.title}`} items={[
+          !done && !running && { label: 'Start timer', run: () => startTask(x.id) },
+          onEdit && { label: 'Edit', run: () => onEdit(x.id) },
+          done && { label: 'Mark not done', run: () => reopenTask(x.id) },
+          { label: 'Delete', danger: true, run: () => deleteTask(x.id) },
+        ]} />
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 /** Small building blocks shared by the screens. */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { taxYearLabel } from '../../lib/money';
 import { today } from '../lib/format';
 import { activeClients, sortedCategories, taxYearsWithData } from '../lib/selectors';
@@ -108,3 +108,32 @@ export function CategoryOptions() {
     </>
   );
 }
+
+/**
+ * A number that counts up from zero when the screen opens. Shows the final
+ * value straight away for people who've asked their device to reduce motion.
+ */
+export function CountUp({ value, format }: { value: number; format: (n: number) => string }) {
+  const [shown, setShown] = useState(() => (reducedMotion() ? value : 0));
+  const target = useRef(value);
+  target.current = value;
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current || reducedMotion()) { setShown(target.current); return; }
+    const start = performance.now();
+    let frame = 0;
+    const step = (now: number) => {
+      const p = Math.min(1, (now - start) / 700);
+      setShown(target.current * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) frame = requestAnimationFrame(step);
+      else done.current = true;
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  // After the first count, follow changes straight away.
+  useEffect(() => { if (done.current) setShown(value); }, [value]);
+  return <>{format(shown)}</>;
+}
+
+const reducedMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;

@@ -13,26 +13,23 @@
 </head>
 <body class="home">
 <!-- The public homepage. Edit the wording here; the app itself lives in /app. -->
-<header class="l-top"><a class="brand" href="/"><i></i>Kita</a><div class="row" style="align-items:center"><a class="btn link" href="/app/">Sign in</a><a class="btn primary" href="/app/?signup">Get started</a></div></header>
+<header class="l-top"><a class="brand" href="/"><svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="var(--accent)"/><path d="M9 6.5v11M9 12.2l5.8-5.2M10.7 10.8l4.6 6.5" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>Kita</a><div class="row" style="align-items:center"><a class="btn link" href="/app/">Sign in</a><a class="btn primary" href="/app/?signup">Get started</a></div></header>
 <div class="l-wrap">
   <section class="l-hero">
     <div>
       <h1>Track the hours. Send the invoice. Know what you keep.</h1>
       <p class="lede">Kita is a time tracker for freelancers that follows your work all the way to your bank account: retainers, invoices, expenses and a running estimate of the tax you’ll owe.</p>
-      <div class="row"><a class="btn primary lg" href="/app/?signup">Get started</a><a class="btn lg" href="/app/?signup">Create a free account</a></div>
+      <div class="row"><a class="btn primary lg" href="/app/?signup">Get started</a><a class="btn lg" href="#how">See how it works</a></div>
       <p class="small muted" style="margin-top:16px">Built for UK freelancers and sole traders. Free during early preview.</p>
     </div>
-    <div class="mock" aria-hidden="true">
-      <div class="row" style="align-items:center;gap:8px"><span class="live"></span><span class="small muted">Tracking for Northlight Legal</span></div>
-      <div class="clock" data-demo-clock>1:24:07</div>
-      <p style="font-weight:500">LinkedIn posts</p>
-      <div class="sep"></div>
-      <div class="kv small" style="padding:0"><span>Retainer this month</span><span>18 of 25 h</span></div>
-      <div class="bar"><i style="width:57.6%"></i><span class="mk" style="left:80%"></span></div>
-      <div class="sep"></div>
-      <div class="kv"><span>Take-home this tax year</span><b>£18,420</b></div>
-      <div class="kv"><span>Set aside from each payment</span><b style="color:var(--accent)">24%</b></div>
-      <div class="kv"><span>Waiting to be paid</span><b>£2,350</b></div>
+    <div class="mock">
+      <p class="small muted">Freelance admin, by the numbers</p>
+      <div class="stat"><div class="n">17 hours</div><p>a month spent on business admin by the typical self-employed worker<sup>1</sup></p></div>
+      <div class="stat"><div class="n">42%</div><p>of UK freelancers work at least five unpaid hours every week<sup>2</sup></p></div>
+      <div class="stat"><div class="n">45%</div><p>dread tax return season and put it off for as long as they can<sup>1</sup></p></div>
+      <p class="stat-close">Kita turns tracking, invoicing and tax set-aside into a few taps, so more of your week goes on paid work.</p>
+      <!-- Sources: check each claim can be linked to its published source before relying on it (UK advertising rules). -->
+      <p class="src"><sup>1</sup> Poll of 500 self-employed people and small business owners, reported by the Yorkshire Post. <sup>2</sup> The Accountancy Partnership, survey of 1,060 UK freelancers and self-employed professionals, 2026.</p>
     </div>
   </section>
   <section class="l-sec meaning">
@@ -43,33 +40,36 @@
     <h2>Most time trackers stop at the timesheet.</h2>
     <p class="intro">The harder part of freelancing comes after. A retainer quietly runs over. An invoice slips past its due date. January arrives with a tax bill bigger than you planned for. Kita connects your hours to the money side, so none of that takes you by surprise.</p>
     <div class="feat">
-      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5"/></svg><h3>Track time without thinking about it</h3><p>A timer that keeps running if you close the tab, plus quick entries for time you forgot to log. Type 1:30, 1.5 or 90m.</p></div>
-      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M6 17v-5M11 17V6M16 17v-8M21 17v-3"/></svg><h3>Stay on top of retainers</h3><p>See hours used against hours agreed for every retainer. Kita warns you at 80% and tells you when to bill for extra hours.</p></div>
-      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6 6 0 0 1 3.5 5.5"/></svg><h3>Know your real hourly rate</h3><p>Fixed fees and retainers hide what a client really pays you per hour. Kita shows it for every client, every month.</p></div>
-      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg><h3>Invoice from your tracked time</h3><p>Turn a month of work into an invoice in seconds, download it as a PDF, and see what’s owed, overdue and due next.</p></div>
-      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><h3>Log expenses as you go</h3><p>Record business costs in HMRC’s categories, so your totals line up with your tax return.</p></div>
-      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.2"/></svg><h3>See what you actually take home</h3><p>A running estimate of Income Tax and National Insurance, how much to set aside, and how you’re pacing against your earnings goal.</p></div>
+      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg><h3>Plan, then press play</h3><p>Add tasks under each client and category. One tap starts the timer, and Kita asks whether the task is finished when you stop.</p></div>
+      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5"/></svg><h3>Track without the friction</h3><p>The timer keeps running if you close the tab. Add forgotten time in seconds, or import meetings from your calendar.</p></div>
+      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/></svg><h3>Know if you have room</h3><p>Set the hours you can work each week. Kita shows what’s committed, and whether a new client or extra hours will fit.</p></div>
+      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M6 17v-5M11 17V6M16 17v-8M21 17v-3"/></svg><h3>Stay on top of retainers</h3><p>See hours used against hours agreed for every retainer, with a warning at 80% and a prompt to bill extra hours.</p></div>
+      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6 6 0 0 1 3.5 5.5"/></svg><h3>Spot underpriced work</h3><p>Insights show what each client really pays per hour and how long your tasks take against your estimates.</p></div>
+      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg><h3>Invoices by category</h3><p>A month of tracked time becomes an invoice in seconds, grouped into categories like Social media and Email marketing.</p></div>
+      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 17v-3M12 17v-6M16 17v-2"/></svg><h3>Reports clients appreciate</h3><p>Send retainer clients a monthly PDF with hours by category, completed tasks and a full work log.</p></div>
+      <div><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.2"/></svg><h3>See what you actually keep</h3><p>Log expenses, and track estimated tax, take-home pay and your earnings goal as you go.</p></div>
     </div>
   </section>
-  <section class="l-sec">
+  <section class="l-sec" id="how">
     <h2>How to use Kita</h2>
     <p class="intro">Ten minutes to set up, then a few seconds a day.</p>
     <ol class="steps">
       <li><div><h3>Add your clients</h3><p>Choose how you bill each one: hourly, a monthly retainer with included hours, or a fixed project fee.</p></div></li>
-      <li><div><h3>Track your time</h3><p>Start the timer when you begin a task, or add time afterwards. Mark anything you can’t bill as not billable.</p></div></li>
-      <li><div><h3>Check in each week</h3><p>Overview shows your hours by day and by client, how much of each retainer is used, and what each client really pays per hour.</p></div></li>
-      <li><div><h3>Invoice at the end of the month</h3><p>Pick a client and a month, and Kita fills in the lines from your tracked time. Edit anything, create the invoice and download the PDF. Mark it paid when the money arrives.</p></div></li>
-      <li><div><h3>Log expenses when they happen</h3><p>Subscriptions, equipment, travel. It takes seconds and saves a scramble before your tax return.</p></div></li>
-      <li><div><h3>Check your money</h3><p>Add any salary, set a goal for the year, and move the suggested amount into your tax savings each month.</p></div></li>
+      <li><div><h3>Set up categories and tasks</h3><p>Create categories for the kinds of work you do, then add tasks for each client with an optional estimate, due date or weekly repeat.</p></div></li>
+      <li><div><h3>Track your time</h3><p>Press play on a task, or start a timer from scratch. When you stop, add a note and mark the task done if it’s finished.</p></div></li>
+      <li><div><h3>Check in each week</h3><p>Overview shows your hours, capacity, retainer usage and insights on your rates and estimates.</p></div></li>
+      <li><div><h3>Invoice and report at month end</h3><p>Kita fills in invoices from your tracked time, grouped by category. Download the PDF, and send retainer clients their monthly report.</p></div></li>
+      <li><div><h3>Keep an eye on your money</h3><p>Log expenses as they happen, add any salary, set a goal for the year and move the suggested amount into your tax savings.</p></div></li>
     </ol>
   </section>
   <section class="l-sec">
     <h2>Questions</h2>
     <div class="faq">
-      <details><summary>Where is my data kept?</summary><p>Your clients, time and invoices are private to you. You can download everything as a backup from Settings at any time.</p></details>
+      <details><summary>Where is my data kept?</summary><p>Your clients, tasks, time and invoices are private to your account. You can download everything as a backup from Settings at any time.</p></details>
+      <details><summary>Can I import meetings from my calendar?</summary><p>Yes. Export your calendar as an .ics file from Google Calendar, Outlook or Apple Calendar, and Kita turns recent meetings into time entries, matching them to clients where it can. The file is read on your device and isn’t uploaded.</p></details>
       <details><summary>How accurate is the tax estimate?</summary><p>It’s an estimate, not advice. It uses the 2026/27 rates for England, Wales and Northern Ireland, includes Class 4 National Insurance, and accounts for a salary if you add one. Like HMRC’s default cash basis, it counts income when you’re paid. It doesn’t yet cover Scottish tax bands, student loans or pension relief.</p></details>
       <details><summary>Does it work with Making Tax Digital?</summary><p>Kita groups your income and expenses into the Making Tax Digital quarters and HMRC’s expense categories, and exports them as a CSV. It doesn’t send updates to HMRC directly.</p></details>
-      <details><summary>Can I use my data in Google Sheets?</summary><p>Yes. Download your time entries or quarterly totals as a CSV from Settings or Money, then import the file into Sheets.</p></details>
+      <details><summary>Can I use my data in Google Sheets?</summary><p>Yes. Download your time entries or quarterly totals as a CSV, then import the file into Sheets.</p></details>
       <details><summary>What does it cost?</summary><p>Kita is free while it’s in early preview.</p></details>
     </div>
   </section>

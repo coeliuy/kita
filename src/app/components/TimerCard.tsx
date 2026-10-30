@@ -5,7 +5,7 @@ import { clockText } from '../lib/format';
 import { activeClients, categoryName, clientById, lastUsed } from '../lib/selectors';
 import { taskMinutes } from '../lib/tasks';
 import { useKita } from '../store/KitaProvider';
-import { CategoryOptions, ClientOptions, ConfirmButton, Icon, useNow } from './ui';
+import { CategoryOptions, ClientOptions, Icon, useNow } from './ui';
 
 const RING = 2 * Math.PI * 52;
 
@@ -23,7 +23,7 @@ function EstimateRing({ spent, estimate }: { spent: number; estimate: number }) 
 }
 
 export function TimerCard() {
-  const { data, startTimer, stopTimer, toast } = useKita();
+  const { data, startTimer, stopTimer, discardTimer } = useKita();
   const t = data.timer;
   const now = useNow(!!t);
   if (!activeClients(data).length) return null;
@@ -51,7 +51,7 @@ export function TimerCard() {
         </div>
         <div className="row" style={{ marginTop: 16 }}>
           <button className="btn stop" onClick={() => stopTimer(true)}><Icon name="stop" />Stop and save</button>
-          <ConfirmButton className="btn link" onConfirm={async () => { await stopTimer(false); toast('Timer discarded'); }}>Discard</ConfirmButton>
+          <button className="btn link" onClick={discardTimer}>Discard</button>
         </div>
       </section>
     );
@@ -65,7 +65,7 @@ export function TimerCard() {
   };
   return (
     <section className="timer-card">
-      <div className="head"><h2>Start tracking</h2></div>
+      <div className="head"><h2>Start tracking</h2><span className="small muted kbd-hint">Press <kbd>Space</kbd> or <kbd>⌘K</kbd> to start from a task</span></div>
       <form className="row" onSubmit={onStart}>
         <label className="f"><span>Client</span><select name="clientId" defaultValue={last.clientId}><ClientOptions /></select></label>
         <label className="f"><span>Category</span><select name="categoryId" defaultValue={last.categoryId}><CategoryOptions /></select></label>

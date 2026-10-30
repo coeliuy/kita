@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { blankLine, dueDate, invoiceTotals, isOverdue, lineAmount, monthLabel, shiftMonth, sumPounds } from '../../lib/money';
-import { ClientOptions, ConfirmButton, plural } from '../components/ui';
+import { RowMenu } from '../components/RowMenu';
+import { ClientOptions, plural } from '../components/ui';
 import { download, invoicePdf } from '../lib/files';
 import { fmtDate, gbp, gbp0, padInvoiceNumber, thisMonth, today } from '../lib/format';
 import { activeClients, clientById } from '../lib/selectors';
@@ -98,22 +99,22 @@ function InvoiceBuilder() {
 
 /** Mark paid, asking for the date the money arrived (it decides which tax year the income counts in). */
 function PaidControl({ inv }: { inv: Invoice }) {
-  const { markPaid, markUnpaid, toast } = useKita();
+  const { markPaid } = useKita();
   const [asking, setAsking] = useState(false);
   const [date, setDate] = useState(today());
-  if (inv.status === 'paid') return <button className="btn link" onClick={() => markUnpaid(inv.id)}>Mark unpaid</button>;
-  if (!asking) return <button className="btn link" onClick={() => { setDate(today()); setAsking(true); }}>Mark paid</button>;
+  if (inv.status === 'paid') return null;
+  if (!asking) return <button className="btn sm" onClick={() => { setDate(today()); setAsking(true); }}>Mark paid</button>;
   return (
     <span className="row" style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
       <input type="date" aria-label="Date paid" value={date} max={today()} onChange={e => setDate(e.target.value)} style={{ width: 'auto', padding: '4px 6px' }} />
-      <button className="btn sm primary" onClick={async () => { await markPaid(inv.id, date || today()); setAsking(false); toast(`${inv.number} marked as paid`); }}>Paid</button>
+      <button className="btn sm primary" onClick={async () => { setAsking(false); await markPaid(inv.id, date || today()); }}>Paid</button>
       <button className="btn link" onClick={() => setAsking(false)}>Cancel</button>
     </span>
   );
 }
 
 export function Invoices() {
-  const { data, deleteInvoice, toast } = useKita();
+  const { data, deleteInvoice, markUnpaid, toast } = useKita();
   const { draft } = useDraftState();
   const startInvoice = useInvoiceDraft();
   const t = today();
@@ -151,12 +152,15 @@ export function Invoices() {
                     <td className="r">{gbp(i.total)}</td>
                     <td>{i.status === 'paid' ? <span className="tag good">Paid {fmtDate(i.paidDate)}</span> : isOverdue(i, t) ? <span className="tag bad">Overdue</span> : <span className="tag">Due {fmtDate(i.dueDate)}</span>}</td>
                     <td className="r" style={{ whiteSpace: 'nowrap' }}>
-                      <button className="btn link" onClick={async () => {
-                        try { download(`${i.number}.pdf`, await invoicePdf(i)); }
-                        catch { toast('The PDF couldn’t be made. Check your connection and try again.'); }
-                      }}>PDF</button>
-                      <PaidControl inv={i} />
-                      <ConfirmButton onConfirm={async () => { await deleteInvoice(i.id); toast(`${i.number} deleted. Its time is uninvoiced again.`); }}>Delete</ConfirmButton>
+                      <PaidControl inv={i} />{' '}
+                      <RowMenu label={`More actions for ${i.number}`} items={[
+                        { label: 'Download PDF', run: async () => {
+                          try { download(`${i.number}.pdf`, await invoicePdf(i)); }
+                          catch { toast('The PDF couldn’t be made. Check your connection and try again.'); }
+                        } },
+                        i.status === 'paid' && { label: 'Mark unpaid', run: () => markUnpaid(i.id) },
+                        { label: 'Delete', danger: true, run: () => deleteInvoice(i.id) },
+                      ]} />
                     </td>
                   </tr>
                 ))}

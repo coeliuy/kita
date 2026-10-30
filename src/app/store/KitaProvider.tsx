@@ -5,14 +5,20 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cleanLines, dueDate, invoiceTotals, type InvoiceLine, type ISODate, type MonthKey } from '../../lib/money';
 import { buildDemoData } from '../lib/demo';
-import { formatHM } from '../../lib/money';
-import { fmtDate, today, uid, ymd } from '../lib/format';
+import { formatHM, taxYearLabel, taxYearOf } from '../../lib/money';
+import { burst, milestoneCrossed } from '../lib/celebrate';
+import { fmtDate, gbp0, today, uid, ymd } from '../lib/format';
 import { nextDue, SUGGESTED_CATEGORIES } from '../lib/tasks';
 import type { ImportResult } from '../lib/importBackup';
-import { clientById, yearSettings } from '../lib/selectors';
+import { clientById, yearSettings, yearSummary } from '../lib/selectors';
 import type { Account } from '../auth/AuthGate';
 import type { KitaStore } from './store';
 import { DEFAULT_SETTINGS, DEFAULT_YEAR, type Category, type Task, type Client, type Collection, type Expense, type Invoice, type KitaData, type Settings, type TimeEntry, type YearSettings } from './types';
+
+export interface ToastAction {
+  label: string;
+  run: () => unknown;
+}
 
 export interface NewInvoice {
   clientId: string;
@@ -28,10 +34,13 @@ interface KitaContext {
   storeKind: KitaStore['kind'];
   /** The signed-in account, or null when using browser storage. */
   account: Account | null;
-  toast: (message: string) => void;
+  /** Show a short message, optionally with a button such as Undo. */
+  toast: (message: string, action?: ToastAction) => void;
+  duplicateEntry: (id: string) => Promise<void>;
   saveClient: (c: Client) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
   saveEntry: (e: TimeEntry) => Promise<void>;
+  saveEntries: (es: TimeEntry[]) => Promise<void>;
   deleteEntry: (id: string) => Promise<void>;
   /** Start a timer. Any timer already running is stopped and its time saved first. */
   startTimer: (t: { clientId: string; categoryId: string; task: string }) => Promise<void>;
@@ -40,6 +49,8 @@ interface KitaContext {
    * Tells the user what happened, and asks whether a task is finished.
    */
   stopTimer: (save: boolean) => Promise<void>;
+  /** Throw away the running timer, with Undo. */
+  discardTimer: () => Promise<void>;
   /** After stopping a task's timer: the question "Is it finished?" */
   askDone: { taskId: string; entryId: string; minutes: number } | null;
   answerAskDone: (finished: boolean, note: string) => Promise<void>;
@@ -75,7 +86,7 @@ export function useKita(): KitaContext {
 export function KitaProvider({ store, account = null, children }: { store: KitaStore; account?: Account | null; children: ReactNode }) {
   const [data, setData] = useState<KitaData | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [toastMsg, setToastMsg] = useState<{ text: string; n: number } | null>(null);
+  const [toastMsg, setToastMsg] = useState<{ text: string; n: number; action?: ToastAction } | null>(null);
   const [askDone, setAskDone] = useState<KitaContext['askDone']>(null);
   // The latest data, for actions that need it without waiting for a re-render.
   const ref = useRef<KitaData | null>(null);
@@ -105,11 +116,12 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
     };
   }, [store]);
 
-  const toast = useCallback((text: string) => setToastMsg(t => ({ text, n: (t?.n ?? 0) + 1 })), []);
+  const toast = useCallback((text: string, action?: ToastAction) => setToastMsg(t => ({ text, action, n: (t?.n ?? 0) + 1 })), []);
 
   useEffect(() => {
     if (!toastMsg) return;
-    const t = setTimeout(() => setToastMsg(null), 2600);
+    // Messages with an Undo button stay longer, to give time to use it.
+    const t = setTimeout(() => setToastMsg(null), toastMsg.action ? 6000 : 2800);
     return () => clearTimeout(t);
   }, [toastMsg]);
 
@@ -209,13 +221,47 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
         await upsert('tasks', [done]);
         toast('Task done.');
       }
+      burst(16);
     };
 
     return {
       saveClient: async (c: Client) => void (await upsert('clients', [c])),
-      deleteClient: async (id: string) => void (await remove('clients', [id])),
+      deleteClient: async (id: string) => {
+        const d = cur();
+        const client = d.clients.find(c => c.id === id);
+        if (!client) return;
+        if (d.timer?.clientId === id) await stop(true, true);
+        // The database unlinks this client's time, tasks, invoices and expenses,
+        // so Undo puts the links back as well as the client.
+        const linked = {
+          tasks: d.tasks.filter(x => x.clientId === id), invoices: d.invoices.filter(x => x.clientId === id),
+          entries: d.entries.filter(x => x.clientId === id), expenses: d.expenses.filter(x => x.clientId === id),
+        };
+        await remove('clients', [id]);
+        toast(`${client.name} deleted. Their time is kept.`, {
+          label: 'Undo',
+          run: async () => {
+            await upsert('clients', [client]);
+            for (const k of ['tasks', 'invoices', 'entries', 'expenses'] as const) if (linked[k].length) await upsert(k, linked[k] as never);
+          },
+        });
+      },
       saveEntry: async (e: TimeEntry) => void (await upsert('entries', [e])),
-      deleteEntry: async (id: string) => void (await remove('entries', [id])),
+      saveEntries: async (es: TimeEntry[]) => void (await upsert('entries', es)),
+      deleteEntry: async (id: string) => {
+        const e = cur().entries.find(x => x.id === id);
+        if (!e) return;
+        await remove('entries', [id]);
+        toast(e.invoiceId ? 'Entry deleted. The invoice it was on hasn’t changed.' : 'Entry deleted', { label: 'Undo', run: () => upsert('entries', [e]) });
+      },
+      duplicateEntry: async (id: string) => {
+        const e = cur().entries.find(x => x.id === id);
+        if (!e) return;
+        const copy: TimeEntry = { ...e, id: uid(), date: today(), createdAt: Date.now(), invoiceId: null, demo: undefined };
+        delete copy.icsKey;
+        await upsert('entries', [copy]);
+        toast(`Added ${formatHM(copy.minutes)} to today`);
+      },
 
       startTimer: async (t: { clientId: string; categoryId: string; task: string }) => {
         await stop(true, true);
@@ -223,6 +269,15 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
       },
 
       stopTimer: (keep: boolean) => stop(keep, false),
+      discardTimer: async () => {
+        const t = cur().timer;
+        if (!t) return;
+        await stop(false, true);
+        toast('Timer discarded', {
+          label: 'Undo',
+          run: async () => { if (!cur().timer) { commit({ ...cur(), timer: t }); await save(store.saveTimer(t)); } },
+        });
+      },
 
       answerAskDone: async (finished: boolean, note: string) => {
         const a = askRef.current;
@@ -247,7 +302,14 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
       saveTask: async (t: Task) => void (await upsert('tasks', [t])),
       deleteTask: async (id: string) => {
         if (cur().timer?.taskId === id) await stop(true, true);
+        const task = cur().tasks.find(x => x.id === id);
+        if (!task) return;
+        const linked = cur().entries.filter(e => e.taskId === id);
         await remove('tasks', [id]);
+        toast('Task deleted. Its tracked time is kept.', {
+          label: 'Undo',
+          run: async () => { await upsert('tasks', [task]); if (linked.length) await upsert('entries', linked); },
+        });
       },
       startTask: async (id: string) => {
         const t = cur().tasks.find(x => x.id === id);
@@ -297,20 +359,41 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
 
       markPaid: async (id: string, paidDate: ISODate) => {
         const i = cur().invoices.find(x => x.id === id);
-        if (i) await upsert('invoices', [{ ...i, status: 'paid', paidDate }]);
+        if (!i) return;
+        const ty = taxYearOf(paidDate);
+        const goalShare = () => yearSummary(cur(), ty, today()).goal?.share ?? 0;
+        const before = goalShare();
+        await upsert('invoices', [{ ...i, status: 'paid', paidDate }]);
+        const y = yearSummary(cur(), ty, today());
+        const hit = milestoneCrossed(before, goalShare());
+        burst(hit ? 48 : 36);
+        if (hit === 1) toast(`${gbp0(i.total)} landed. You’ve reached your ${taxYearLabel(ty)} goal! Brilliant work.`);
+        else if (hit) toast(`${gbp0(i.total)} landed. ${hit === 0.5 ? 'Halfway' : hit === 0.25 ? 'A quarter of the way' : 'Three quarters of the way'} to your goal. Keep going!`);
+        else toast(`${gbp0(i.total)} landed. You’ve been paid ${gbp0(y.figures.income)}${cur().settings.vatRegistered ? ' (before VAT)' : ''} this tax year.`);
       },
       markUnpaid: async (id: string) => {
         const i = cur().invoices.find(x => x.id === id);
         if (i) await upsert('invoices', [{ ...i, status: 'unpaid', paidDate: null }]);
       },
       deleteInvoice: async (id: string) => {
-        const freed = cur().entries.filter(e => e.invoiceId === id).map(e => ({ ...e, invoiceId: null }));
-        if (freed.length) await upsert('entries', freed);
+        const invoice = cur().invoices.find(x => x.id === id);
+        if (!invoice) return;
+        const linked = cur().entries.filter(e => e.invoiceId === id);
+        if (linked.length) await upsert('entries', linked.map(e => ({ ...e, invoiceId: null })));
         await remove('invoices', [id]);
+        toast(`${invoice.number} deleted. Its time is uninvoiced again.`, {
+          label: 'Undo',
+          run: async () => { await upsert('invoices', [invoice]); if (linked.length) await upsert('entries', linked); },
+        });
       },
 
       saveExpense: async (x: Expense) => void (await upsert('expenses', [x])),
-      deleteExpense: async (id: string) => void (await remove('expenses', [id])),
+      deleteExpense: async (id: string) => {
+        const x = cur().expenses.find(v => v.id === id);
+        if (!x) return;
+        await remove('expenses', [id]);
+        toast('Expense deleted', { label: 'Undo', run: () => upsert('expenses', [x]) });
+      },
 
       updateSettings: (patch: Partial<Settings>) => {
         const settings = { ...cur().settings, ...patch };
@@ -393,8 +476,11 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
   return (
     <Ctx.Provider value={{ data, storeKind: store.kind, account, toast, askDone, ...actions }}>
       {children}
-      <div id="toast" role="status" aria-live="polite" className={toastMsg ? 'show' : ''}>
-        {toastMsg?.text}
+      <div id="toast" role="status" aria-live="polite" className={`${toastMsg ? 'show' : ''}${toastMsg?.action ? ' has-act' : ''}`}>
+        <span>{toastMsg?.text}</span>
+        {toastMsg?.action && (
+          <button className="tact" onClick={() => { const a = toastMsg.action!; setToastMsg(null); void a.run(); }}>{toastMsg.action.label}</button>
+        )}
       </div>
     </Ctx.Provider>
   );

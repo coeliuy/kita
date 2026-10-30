@@ -2,7 +2,7 @@
 import { addDays, formatHM, isOverdue, sumMinutes, sumPounds, taxYearOf } from '../../lib/money';
 import { TaskRow } from '../components/TaskRow';
 import { TimerCard } from '../components/TimerCard';
-import { Icon, plural } from '../components/ui';
+import { CountUp, Icon, plural } from '../components/ui';
 import { gbp0, parseYmd, thisMonth, today } from '../lib/format';
 import { entriesIn, monthSummary, yearSummary } from '../lib/selectors';
 import { capacity } from '../lib/planning';
@@ -127,10 +127,10 @@ export function Today() {
           </section>
           <section>
             <div className="figs">
-              <div className="fig"><div className="v">{formatHM(todayMin)}</div><div className="l">Tracked today</div></div>
-              <div className="fig"><div className="v">{formatHM(weekMin)}</div><div className="l">This week</div></div>
-              <div className="fig"><div className="v">{gbp0(owed)}</div><div className="l">Waiting to be paid</div></div>
-              <div className="fig hero"><div className="v">{gbp0(takeHome)}</div><div className="l">Estimated take-home this tax year</div></div>
+              <div className="fig"><div className="v"><CountUp value={todayMin} format={formatHM} /></div><div className="l">Tracked today</div></div>
+              <div className="fig"><div className="v"><CountUp value={weekMin} format={formatHM} /></div><div className="l">This week</div></div>
+              <div className="fig"><div className="v"><CountUp value={owed} format={gbp0} /></div><div className="l">Waiting to be paid</div></div>
+              <div className="fig hero"><div className="v"><CountUp value={takeHome} format={gbp0} /></div><div className="l">Estimated take-home this tax year</div></div>
             </div>
           </section>
         </>

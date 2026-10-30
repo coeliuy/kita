@@ -1,6 +1,7 @@
 /** Sign in, sign up, and password reset. */
 import { useState, type FormEvent } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { Logo } from '../components/Layout';
 import { GOOGLE_SIGN_IN } from '../lib/supabase';
 
 export type AuthMode = 'signin' | 'signup' | 'forgot' | 'newPassword';
@@ -73,7 +74,7 @@ export function AuthScreen({ sb, initialMode = 'signin', onPasswordSet }: { sb: 
 
   return (
     <div className="auth">
-      <a className="brand" href="/"><i />Kita</a>
+      <a className="brand" href="/"><Logo />Kita</a>
       <section className="auth-card">
         <h1>{title}</h1>
         {mode === 'signup' && <p className="sub">Free during early preview. Your data is private to your account.</p>}

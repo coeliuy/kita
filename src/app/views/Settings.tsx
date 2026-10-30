@@ -167,6 +167,7 @@ export function Settings() {
             <option value="">Match my device</option><option value="light">Light</option><option value="dark">Dark</option>
           </select>
         </label>
+        <p className="fine" style={{ marginTop: 12 }}>Shortcuts: <kbd>Space</kbd> starts or stops the timer, <kbd>N</kbd> adds a task, <kbd>⌘K</kbd> or <kbd>/</kbd> opens quick start.</p>
       </section>
       <section>
         <div className="head"><h2>Your data</h2></div>

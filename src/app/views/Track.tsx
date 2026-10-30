@@ -2,7 +2,10 @@ import { useRef, useState, type FormEvent } from 'react';
 import { addDays, formatHM, parseDuration, sumMinutes } from '../../lib/money';
 import { TaskRow } from '../components/TaskRow';
 import { TimerCard } from '../components/TimerCard';
-import { CategoryOptions, ClientOptions, ConfirmButton } from '../components/ui';
+import { useIntent } from '../components/intents';
+import { RowMenu } from '../components/RowMenu';
+import { CategoryOptions, ClientOptions, Icon } from '../components/ui';
+import { meetingsToImport, parseICS, type Meeting } from '../lib/ics';
 import { fmtDate, parseYmd, today, uid } from '../lib/format';
 import { activeClients, categoryName, clientById, entriesIn, lastUsed } from '../lib/selectors';
 import { byPriority, minutesLeft } from '../lib/tasks';
@@ -73,6 +76,10 @@ function TasksSection() {
   const open = data.tasks.filter(t => t.status !== 'done' && mine(t)).sort(byPriority);
   const done = data.tasks.filter(t => t.status === 'done' && mine(t)).sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? ''));
   const editing = form && form !== 'new' ? data.tasks.find(t => t.id === form) ?? null : null;
+  useIntent('newTask', () => {
+    setForm('new');
+    setTimeout(() => document.getElementById('tform')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  });
   const edit = (id: string) => {
     setForm(id);
     setTimeout(() => document.getElementById('tform')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
@@ -191,11 +198,95 @@ function EntryForm({ editing, onDone }: { editing: TimeEntry | null; onDone: () 
   );
 }
 
+function CalendarImport() {
+  const { data, saveEntries, toast } = useKita();
+  const [meetings, setMeetings] = useState<Meeting[] | null>(null);
+  const file = useRef<HTMLInputElement>(null);
+  const set = (i: number, patch: Partial<Meeting>) => setMeetings(ms => ms!.map((m, j) => (j === i ? { ...m, ...patch } : m)));
+
+  const read = async (f: File | undefined) => {
+    if (!f) return;
+    try {
+      const events = parseICS(await f.text());
+      setMeetings(meetingsToImport(events, {
+        clients: activeClients(data), categories: data.categories,
+        importedKeys: new Set(data.entries.map(e => e.icsKey).filter((k): k is string => !!k)), now: new Date(),
+      }));
+    } catch {
+      toast('Couldn’t read that file. Choose the .ics file exported from your calendar.');
+    }
+  };
+
+  const importSelected = async () => {
+    const chosen = (meetings ?? []).filter(m => m.selected && m.clientId);
+    if (!chosen.length) { toast('Tick at least one meeting and choose its client.'); return; }
+    await saveEntries(chosen.map(m => ({
+      id: uid(), clientId: m.clientId, categoryId: m.categoryId, taskId: '', task: m.summary, note: 'From calendar',
+      date: m.date, minutes: m.minutes, billable: true, icsKey: m.key, createdAt: m.start, invoiceId: null,
+    })));
+    setMeetings(null);
+    toast(`Imported ${chosen.length} ${chosen.length === 1 ? 'meeting' : 'meetings'}`);
+  };
+
+  return (
+    <section>
+      <details className="fold" open={!!meetings}>
+        <summary><h2>Import meetings from your calendar</h2></summary>
+        <div className="stack" style={{ marginTop: 12 }}>
+          <p className="small muted">
+            Turn calls and meetings into time entries so they don’t go unbilled. In Google Calendar, open Settings, then Import &amp; export,
+            and export your calendars. Unzip the download and choose the .ics file for your work calendar. Outlook and Apple Calendar can
+            export .ics files too. The file is read on your device and isn’t uploaded.
+          </p>
+          <div>
+            <input ref={file} type="file" accept=".ics,text/calendar" hidden onChange={e => { read(e.target.files?.[0]); e.target.value = ''; }} />
+            <button className="btn" onClick={() => file.current?.click()}><Icon name="calendar" />Choose .ics file</button>
+          </div>
+          {meetings && (meetings.length ? (
+            <>
+              <p className="small">Found {meetings.length} {meetings.length === 1 ? 'meeting' : 'meetings'} from the last 60 days. Meetings matched to a client are ticked; choose a client for any others you want to import.</p>
+              <div className="tw">
+                <table>
+                  <thead><tr><th /><th>Meeting</th><th>When</th><th className="r">Time</th><th>Client</th><th>Category</th></tr></thead>
+                  <tbody>
+                    {meetings.map((m, i) => (
+                      <tr key={m.key}>
+                        <td><input type="checkbox" checked={m.selected} onChange={e => set(i, { selected: e.target.checked })} aria-label={`Import ${m.summary}`} /></td>
+                        <td>{m.summary}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(m.date)}, {m.time}</td>
+                        <td className="r">{formatHM(m.minutes)}</td>
+                        <td>
+                          <select value={m.clientId} aria-label="Client" onChange={e => set(i, { clientId: e.target.value, selected: !!e.target.value || m.selected })}>
+                            <option value="">Choose…</option><ClientOptions />
+                          </select>
+                        </td>
+                        <td><select value={m.categoryId} aria-label="Category" onChange={e => set(i, { categoryId: e.target.value })}><CategoryOptions /></select></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="row" style={{ justifyContent: 'flex-end' }}>
+                <button className="btn link" onClick={() => setMeetings(null)}>Cancel</button>
+                <button className="btn primary" onClick={importSelected}>Import selected</button>
+              </div>
+            </>
+          ) : <p className="muted">No new meetings found in the last 60 days. Meetings already imported, all-day events and repeating events are skipped.</p>)}
+        </div>
+      </details>
+    </section>
+  );
+}
+
 export function Track() {
-  const { data, deleteEntry, toast } = useKita();
+  const { data, deleteEntry, duplicateEntry } = useKita();
   const [week, setWeek] = useState(0);
   const [editId, setEditId] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
+  useIntent('manualEntry', () => {
+    setManualOpen(true);
+    setTimeout(() => document.getElementById('manual')?.scrollIntoView({ behavior: 'smooth' }));
+  });
 
   if (!activeClients(data).length) {
     return <section><h1>Track time</h1><p className="sub" style={{ margin: '6px 0 20px' }}>Start a timer or add time after the fact.</p><NoClients /></section>;
@@ -220,6 +311,7 @@ export function Track() {
           <div className="panel" style={{ marginTop: 14 }}><EntryForm editing={editing} onDone={() => setEditId(null)} /></div>
         </details>
       </section>
+      <CalendarImport />
       <section>
         <div className="head">
           <h2>{label} <span className="sub">{formatHM(sumMinutes(weekEntries))} tracked</span></h2>
@@ -252,12 +344,11 @@ export function Track() {
                     </div>
                     <div className="dur">{formatHM(e.minutes)}</div>
                     <div className="acts">
-                      <button className="btn link" onClick={() => { setEditId(e.id); setTimeout(() => document.getElementById('manual')?.scrollIntoView({ behavior: 'smooth' })); }}>Edit</button>
-                      <ConfirmButton onConfirm={async () => {
-                        await deleteEntry(e.id);
-                        if (editId === e.id) setEditId(null);
-                        toast(e.invoiceId ? 'Entry deleted. The invoice it was on hasn’t changed.' : 'Entry deleted');
-                      }}>Delete</ConfirmButton>
+                      <RowMenu label={`More actions for ${e.task || 'this entry'}`} items={[
+                        { label: 'Edit', run: () => { setEditId(e.id); setTimeout(() => document.getElementById('manual')?.scrollIntoView({ behavior: 'smooth' })); } },
+                        { label: 'Duplicate to today', run: () => duplicateEntry(e.id) },
+                        { label: 'Delete', danger: true, run: () => { if (editId === e.id) setEditId(null); deleteEntry(e.id); } },
+                      ]} />
                     </div>
                   </div>
                 );

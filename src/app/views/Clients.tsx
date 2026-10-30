@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react';
 import { monthEnd, monthLabel, monthOf, monthStart, type BillingType } from '../../lib/money';
-import { ConfirmButton } from '../components/ui';
 import { COLORS } from '../lib/demo';
 import { gbp, gbp0, thisMonth, uid } from '../lib/format';
 import { useKita } from '../store/KitaProvider';
@@ -87,7 +86,7 @@ function ClientForm({ client, onDone }: { client: Client | null; onDone: () => v
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <div>{client && <label className="check"><input type="checkbox" name="archived" defaultChecked={client.archived} /> Archived (hidden from timers)</label>}</div>
           <div className="row">
-            {client && <ConfirmButton onConfirm={async () => { await deleteClient(client.id); toast('Client deleted. Their time entries are kept.'); onDone(); }}>Delete</ConfirmButton>}
+            {client && <button type="button" className="btn link danger" onClick={async () => { onDone(); await deleteClient(client.id); }}>Delete</button>}
             <button type="button" className="btn link" onClick={onDone}>Cancel</button>
             <button className="btn primary">{client ? 'Save changes' : 'Add client'}</button>
           </div>

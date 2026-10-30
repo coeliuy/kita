@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { addDays, formatHM, monthEnd, monthLabel, shiftMonth, sumMinutes, taxYearLabel, taxYearOf, type MonthKey } from '../../lib/money';
-import { Icon, NumberField, plural } from '../components/ui';
+import { CountUp, Icon, NumberField, plural } from '../components/ui';
 import { capacity, insights, whatIf } from '../lib/planning';
 import { clientReportPdf, download } from '../lib/files';
 import { fmtDate, gbp, gbp0, hrsTxt, parseYmd, thisMonth, today } from '../lib/format';
@@ -146,10 +146,10 @@ export function Overview() {
           </div>
         </div>
         <div className="figs">
-          <div className="fig"><div className="v">{formatHM(m.minutes)}</div><div className="l">Hours tracked over {workDays} {plural(workDays, 'day')}</div></div>
-          <div className="fig hero"><div className="v">{gbp0(m.value)}</div><div className="l">Value of your work</div></div>
+          <div className="fig"><div className="v"><CountUp key={month} value={m.minutes} format={formatHM} /></div><div className="l">Hours tracked over {workDays} {plural(workDays, 'day')}</div></div>
+          <div className="fig hero"><div className="v"><CountUp key={month} value={m.value} format={gbp0} /></div><div className="l">Value of your work</div></div>
           <div className="fig"><div className="v">{gbp0(m.minutes ? m.value / (m.minutes / 60) : 0)}</div><div className="l">Average per hour</div></div>
-          <div className="fig"><div className="v">{gbp0(m.unbilled)}</div><div className="l">Not invoiced yet</div></div>
+          <div className="fig"><div className="v"><CountUp key={month} value={m.unbilled} format={gbp0} /></div><div className="l">Not invoiced yet</div></div>
         </div>
       </section>
       <CapacitySection />

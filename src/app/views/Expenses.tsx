@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { inRange, sumPounds, taxYearLabel, taxYearOf, taxYearRange } from '../../lib/money';
-import { ClientOptions, ConfirmButton, TaxYearSelect } from '../components/ui';
+import { RowMenu } from '../components/RowMenu';
+import { ClientOptions, TaxYearSelect } from '../components/ui';
 import { EXPENSE_CATEGORIES } from '../lib/categories';
 import { fmtDate, gbp, today, uid } from '../lib/format';
 import { clientById } from '../lib/selectors';
@@ -73,8 +74,10 @@ export function Expenses() {
                 </div>
                 <div className="dur">{gbp(x.amount)}</div>
                 <div className="acts">
-                  <button className="btn link" onClick={() => { setEditId(x.id); scrollTo({ top: 0, behavior: 'smooth' }); }}>Edit</button>
-                  <ConfirmButton onConfirm={async () => { await deleteExpense(x.id); toast('Expense deleted'); }}>Delete</ConfirmButton>
+                  <RowMenu label={`More actions for ${x.desc}`} items={[
+                    { label: 'Edit', run: () => { setEditId(x.id); scrollTo({ top: 0, behavior: 'smooth' }); } },
+                    { label: 'Delete', danger: true, run: () => { if (editId === x.id) setEditId(null); deleteExpense(x.id); } },
+                  ]} />
                 </div>
               </div>
             )) : <div className="empty">No expenses logged for {taxYearLabel(ty)}.</div>}

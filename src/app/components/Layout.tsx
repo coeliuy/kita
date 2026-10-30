@@ -1,11 +1,13 @@
 /** The app's frame: top bar with the running timer, sidebar on desktop, tab bar on mobile. */
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { formatHM, sumMinutes } from '../../lib/money';
 import { clockText, today } from '../lib/format';
-import { clientById, entriesIn } from '../lib/selectors';
+import { activeClients, clientById, entriesIn } from '../lib/selectors';
 import { useRouter, type View } from '../router';
 import { useKita } from '../store/KitaProvider';
 import { AskDoneSheet } from './AskDoneSheet';
+import { requestIntent } from './intents';
+import { QuickStart } from './QuickStart';
 import { Icon, useNow } from './ui';
 
 const NAV: [View, string][] = [
@@ -34,13 +36,57 @@ function TimerPill() {
   );
 }
 
+/** The Kita logo: a K in a circle. */
+export const Logo = () => (
+  <svg className="logo" viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="11" fill="var(--accent)" />
+    <path d="M9 6.5v11M9 12.2l5.8-5.2M10.7 10.8l4.6 6.5" stroke="var(--accent-ink)" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+  </svg>
+);
+
+const BASE_TITLE = 'Kita';
+
 export function Layout({ children }: { children: ReactNode }) {
   const { view, go } = useRouter();
+  const { data, stopTimer, toast, askDone } = useKita();
+  const [quick, setQuick] = useState(false);
   const tab = UNDER_MORE.includes(view) ? 'more' : view;
+  const t = data.timer;
+  const now = useNow(!!t);
+  const canTrack = activeClients(data).length > 0;
+  const openQuick = useCallback(() => {
+    if (canTrack) setQuick(true);
+    else toast('Add a client first.');
+  }, [canTrack, toast]);
+
+  // The running timer in the browser tab's title, e.g. "1:05 LinkedIn posts · Kita"
+  useEffect(() => {
+    if (!t) { document.title = BASE_TITLE; return; }
+    const m = Math.max(0, Math.floor((now - t.startedAt) / 60000));
+    document.title = `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')} ${t.task || clientById(data, t.clientId)?.name || ''} · Kita`;
+  }, [t, now, data]);
+  useEffect(() => () => { document.title = BASE_TITLE; }, []);
+
+  // Keyboard shortcuts: Space starts or stops, N adds a task, ⌘K or / opens quick start, ? lists them.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openQuick(); return; }
+      const el = e.target as HTMLElement;
+      const tag = el.tagName?.toLowerCase();
+      if (['input', 'textarea', 'select', 'button', 'summary'].includes(tag) || el.isContentEditable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || quick || askDone || document.getElementById('pop')) return;
+      if (e.key === ' ') { e.preventDefault(); if (t) stopTimer(true); else openQuick(); }
+      else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); go('track'); requestIntent('newTask'); }
+      else if (e.key === '/') { e.preventDefault(); openQuick(); }
+      else if (e.key === '?') { e.preventDefault(); toast('Shortcuts: Space to start or stop, N for a new task, ⌘K or / to search.'); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [t, quick, askDone, openQuick, stopTimer, go, toast]);
   return (
     <>
       <header className="top">
-        <a className="brand" href="/" aria-label="About Kita" style={{ color: 'inherit', textDecoration: 'none' }}><i />Kita</a>
+        <a className="brand" href="/" aria-label="About Kita" style={{ color: 'inherit', textDecoration: 'none' }}><Logo />Kita</a>
         <TimerPill />
       </header>
       <div className="app">
@@ -58,7 +104,11 @@ export function Layout({ children }: { children: ReactNode }) {
           <button key={k} onClick={() => go(k)} aria-current={tab === k ? 'page' : undefined}><Icon name={k} /><span>{label}</span></button>
         ))}
       </div>
+      <button id="fab" className={t ? 'on' : ''} aria-label={t ? 'Stop the timer' : 'Start a timer'} onClick={() => (t ? stopTimer(true) : openQuick())}>
+        {t ? <><Icon name="stop" /><span>{clockText(now - t.startedAt)}</span></> : <Icon name="play" />}
+      </button>
       <AskDoneSheet />
+      {quick && <QuickStart onClose={() => setQuick(false)} />}
     </>
   );
 }
