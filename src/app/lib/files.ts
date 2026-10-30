@@ -186,7 +186,7 @@ export async function clientReportPdf(d: KitaData, clientId: string, month: stri
   for (const [k, m] of [...g].sort((a, b) => b[1] - a[1])) {
     page(8);
     doc.text(k, L, y);
-    doc.setFillColor(194, 65, 12); doc.rect(80, y - 3.2, (90 * m) / max, 3.6, 'F');
+    doc.setFillColor(196, 73, 0); doc.rect(80, y - 3.2, (90 * m) / max, 3.6, 'F');
     doc.text(formatHM(m), R, y, { align: 'right' });
     y += 7;
   }

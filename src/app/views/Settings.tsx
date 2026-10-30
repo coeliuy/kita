@@ -4,6 +4,7 @@ import { ConfirmButton, NumberField, TaxYearSelect } from '../components/ui';
 import { download, entriesCsv } from '../lib/files';
 import { today, uid } from '../lib/format';
 import { importBackup, ImportError } from '../lib/importBackup';
+import { rememberTheme } from '../lib/theme';
 import { ratesFor, sortedCategories, yearSettings } from '../lib/selectors';
 import { SUGGESTED_CATEGORIES } from '../lib/tasks';
 import { useKita } from '../store/KitaProvider';
@@ -55,7 +56,7 @@ function Categories() {
       </form>
       {!data.categories.length && (
         <p style={{ marginTop: 10 }}>
-          <button className="btn link" style={{ padding: 0, color: 'var(--accent)' }} onClick={addSuggestedCategories}>Add suggested categories</button>{' '}
+          <button className="btn link pop" style={{ padding: 0 }} onClick={addSuggestedCategories}>Add suggested categories</button>{' '}
           <span className="small muted">({SUGGESTED_CATEGORIES.join(', ')})</span>
         </p>
       )}
@@ -163,7 +164,7 @@ export function Settings() {
       <section>
         <div className="head"><h2>Appearance</h2></div>
         <label className="f" style={{ maxWidth: 220 }}><span>Theme</span>
-          <select value={s.theme} onChange={e => updateSettings({ theme: e.target.value as Theme })}>
+          <select value={s.theme} onChange={e => { rememberTheme(e.target.value as Theme); updateSettings({ theme: e.target.value as Theme }); }}>
             <option value="">Match my device</option><option value="light">Light</option><option value="dark">Dark</option>
           </select>
         </label>
@@ -177,7 +178,7 @@ export function Settings() {
         </div>
         <p className="fine" style={{ marginTop: 10 }}>To use your time in Google Sheets, download the CSV and choose File, then Import, in Sheets.</p>
         <div className="row" style={{ marginTop: 16, alignItems: 'center' }}>
-          <button className="btn" disabled={importing} onClick={() => fileInput.current?.click()}>{importing ? 'Importing…' : 'Import a backup (JSON)'}</button>
+          <button className="btn secondary" disabled={importing} onClick={() => fileInput.current?.click()}>{importing ? 'Importing…' : 'Import a backup (JSON)'}</button>
           <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={e => onImport(e.target.files?.[0])} />
           <p className="fine">Bring in a “Download everything” file, including one from the earlier single-page version of Kita. It adds to what’s here and doesn’t replace anything.</p>
         </div>

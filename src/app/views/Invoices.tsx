@@ -103,7 +103,7 @@ function PaidControl({ inv }: { inv: Invoice }) {
   const [asking, setAsking] = useState(false);
   const [date, setDate] = useState(today());
   if (inv.status === 'paid') return null;
-  if (!asking) return <button className="btn sm" onClick={() => { setDate(today()); setAsking(true); }}>Mark paid</button>;
+  if (!asking) return <button className="btn sm secondary" onClick={() => { setDate(today()); setAsking(true); }}>Mark paid</button>;
   return (
     <span className="row" style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
       <input type="date" aria-label="Date paid" value={date} max={today()} onChange={e => setDate(e.target.value)} style={{ width: 'auto', padding: '4px 6px' }} />

@@ -3,7 +3,7 @@
  * passing a goal milestone. Skipped for people who've asked their device to
  * reduce motion.
  */
-const COLOURS = ['#C2410C', '#FB8A3C', '#F2B33D', '#1F6F5C', '#3B6FB6'];
+const COLOURS = ['#C44900', '#E39A6B', '#1B998B', '#A3D7D1', '#F2B33D'];
 
 /** Where the last click or tap was, so confetti comes from the button pressed. */
 let lastPoint: { x: number; y: number } | null = null;

@@ -36,7 +36,7 @@ function ClientRow({ r, maxMinutes, onReport }: { r: ClientMonth; maxMinutes: nu
       {(note || r.minutes > 0) && (
         <div className="note row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{note}</span>
-          {r.minutes > 0 && <button className="btn link" onClick={onReport}><Icon name="report" />Client report</button>}
+          {r.minutes > 0 && <button className="btn link pop" onClick={onReport}><Icon name="report" />Client report</button>}
         </div>
       )}
     </div>
@@ -173,7 +173,7 @@ export function Overview() {
       </section>
       <InsightsSection />
       <section>
-        <div className="head"><h2>Tax year {taxYearLabel(ty)}</h2><button className="btn sm" onClick={() => go('money')}>See take-home and tax</button></div>
+        <div className="head"><h2>Tax year {taxYearLabel(ty)}</h2><button className="btn sm secondary" onClick={() => go('money')}>See take-home and tax</button></div>
         <div className="figs">
           <div className="fig"><div className="v">{gbp0(y.figures.income)}</div><div className="l">Received so far</div></div>
           <div className="fig"><div className="v">{gbp0(y.figures.takeHome)}</div><div className="l">Estimated take-home</div></div>

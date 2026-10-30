@@ -40,7 +40,7 @@ export function Money() {
             <div className="kv strong"><span>Profit</span><span>{gbp(f.profit)}</span></div>
             <div className="kv"><span>Income Tax on this profit (estimate)</span><span>− {gbp(f.tax.incomeTax)}</span></div>
             <div className="kv"><span>Class 4 National Insurance (estimate)</span><span>− {gbp(f.tax.class4NI)}</span></div>
-            <div className="kv strong" style={{ color: 'var(--accent)' }}><span>Estimated take-home</span><span>{gbp(f.takeHome)}</span></div>
+            <div className="kv strong" style={{ color: 'var(--accent-text)' }}><span>Estimated take-home</span><span>{gbp(f.takeHome)}</span></div>
             {y.awaiting > 0 && <p className="fine" style={{ marginTop: 8 }}>Plus {gbp(y.awaiting)} invoiced this year and not yet paid. It counts once the money arrives.</p>}
           </div>
           <div className="stack">
@@ -94,7 +94,7 @@ export function Money() {
               {gbp0(g.achieved)} of {gbp0(ys.goal)} ({Math.round(g.share * 100)}%)
               {g.onPace !== null && g.aheadBy !== null ? (
                 <>. At this point in the year you’d be on pace at {gbp0(g.onPace)}, so you’re{' '}
-                  <b style={{ color: g.aheadBy >= 0 ? 'var(--accent)' : 'var(--warn)' }}>{gbp0(Math.abs(g.aheadBy))} {g.aheadBy >= 0 ? 'ahead' : 'behind'}</b>.</>
+                  <b style={{ color: g.aheadBy >= 0 ? 'var(--pop-text)' : 'var(--warn)' }}>{gbp0(Math.abs(g.aheadBy))} {g.aheadBy >= 0 ? 'ahead' : 'behind'}</b>.</>
               ) : '.'}
             </p>
             {g.reached ? <p style={{ marginTop: 10 }}><span className="tag good">Goal reached</span></p> : g.perMonth !== null && (
@@ -110,7 +110,7 @@ export function Money() {
       <section>
         <div className="head">
           <h2>Quarterly totals</h2>
-          <button className="btn sm" onClick={() => { const c = quartersCsv(data, ty); download(c.filename, c.text, 'text/csv'); }}>Download CSV</button>
+          <button className="btn sm secondary" onClick={() => { const c = quartersCsv(data, ty); download(c.filename, c.text, 'text/csv'); }}>Download CSV</button>
         </div>
         <div className="tw">
           <table>

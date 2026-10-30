@@ -5,6 +5,7 @@ import { clockText, today } from '../lib/format';
 import { activeClients, clientById, entriesIn } from '../lib/selectors';
 import { useRouter, type View } from '../router';
 import { useKita } from '../store/KitaProvider';
+import { rememberTheme, shownTheme, storedTheme } from '../lib/theme';
 import { AskDoneSheet } from './AskDoneSheet';
 import { requestIntent } from './intents';
 import { QuickStart } from './QuickStart';
@@ -45,6 +46,19 @@ export const Logo = () => (
 );
 
 const BASE_TITLE = 'Kita';
+
+/** Switches between light and dark mode. */
+function ThemeToggle() {
+  const { data, updateSettings } = useKita();
+  const shown = shownTheme(data.settings.theme || storedTheme());
+  const next = shown === 'dark' ? 'light' : 'dark';
+  return (
+    <button className="ibtn theme-toggle" aria-label={`Switch to ${next} mode`} title={`Switch to ${next} mode`}
+      onClick={() => { rememberTheme(next); updateSettings({ theme: next }); }}>
+      <Icon name={shown === 'dark' ? 'sun' : 'moon'} />
+    </button>
+  );
+}
 
 export function Layout({ children }: { children: ReactNode }) {
   const { view, go } = useRouter();
@@ -88,6 +102,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <header className="top">
         <a className="brand" href="/" aria-label="About Kita" style={{ color: 'inherit', textDecoration: 'none' }}><Logo />Kita</a>
         <TimerPill />
+        <ThemeToggle />
       </header>
       <div className="app">
         <nav id="nav" aria-label="Sections">

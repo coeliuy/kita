@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Layout } from './components/Layout';
 import { useRouter, type View } from './router';
+import { applyTheme, storedTheme } from './lib/theme';
 import { useKita } from './store/KitaProvider';
 import { Clients } from './views/Clients';
 import { Expenses } from './views/Expenses';
@@ -24,8 +25,7 @@ export function App() {
   const handledDemo = useRef(false);
 
   useEffect(() => {
-    if (theme) document.documentElement.dataset.theme = theme;
-    else delete document.documentElement.dataset.theme;
+    applyTheme(theme || storedTheme());
   }, [theme]);
 
   // The homepage's "Try it with demo data" button opens /app/?demo

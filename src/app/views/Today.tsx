@@ -41,7 +41,7 @@ function SetupChecklist() {
       </div>
       <div className="row" style={{ marginTop: 10, justifyContent: 'space-between' }}>
         {data.clients.length ? <span /> : (
-          <button className="btn" onClick={async () => { await loadDemo(); toast('Demo data added. Remove it any time in Settings.'); }}>Try it with demo data</button>
+          <button className="btn secondary" onClick={async () => { await loadDemo(); toast('Demo data added. Remove it any time in Settings.'); }}>Try it with demo data</button>
         )}
         <button className="btn link" onClick={() => updateSettings({ hideSetup: true })}>Hide this</button>
       </div>
@@ -117,7 +117,7 @@ export function Today() {
       {data.clients.length > 0 && (
         <>
           <section>
-            <div className="head"><h2>Your tasks</h2><button className="btn sm" onClick={() => go('track')}>All tasks</button></div>
+            <div className="head"><h2>Your tasks</h2><button className="btn sm secondary" onClick={() => go('track')}>All tasks</button></div>
             {forToday.length ? forToday.map(x => <TaskRow key={x.id} task={x} showClient />) : (
               <p className="muted">
                 Nothing due today. {data.tasks.some(x => x.status !== 'done') ? 'Pick something coming up, or start a timer above.' : 'Add tasks for your clients on the Track page.'}

@@ -121,7 +121,7 @@ export function Clients() {
           <div className="empty">
             No clients yet. Add one with their rate or retainer, and Kita does the maths from there.<br />
             <button className="btn primary" onClick={() => open('new')}>Add client</button>{' '}
-            <button className="btn" onClick={async () => { await loadDemo(); toast('Demo data added. Remove it any time in Settings.'); }}>Try it with demo data</button>
+            <button className="btn secondary" onClick={async () => { await loadDemo(); toast('Demo data added. Remove it any time in Settings.'); }}>Try it with demo data</button>
           </div>
         )}
       </section>

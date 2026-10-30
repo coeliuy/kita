@@ -104,7 +104,7 @@ function TasksSection() {
       {!data.categories.length && (
         <p className="small muted">
           Tip: set up work categories such as Social media and Email marketing to group your tasks and time.{' '}
-          <button className="btn link" style={{ padding: 0, color: 'var(--accent)' }} onClick={addSuggestedCategories}>Add suggested categories</button>
+          <button className="btn link pop" style={{ padding: 0 }} onClick={addSuggestedCategories}>Add suggested categories</button>
         </p>
       )}
       {form && <TaskForm editing={editing} defaultClient={filter || lastUsed(data).clientId} onDone={() => setForm(null)} />}
