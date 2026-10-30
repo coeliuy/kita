@@ -10,7 +10,7 @@ hours by client, retainers, invoices, expenses, and estimated tax and take-home 
 Being rebuilt from the single-file prototype (`prototype/kita.html`) into a full web app.
 
 - [x] Step 1: Money and tax calculations as a tested module (`src/lib/money`)
-- [ ] Step 2: The app's screens in React
+- [x] Step 2: The app's screens in React (data saved in the browser for now)
 - [ ] Step 3: Database (Supabase) with row-level security
 - [ ] Step 4: Accounts and importing prototype data
 - [ ] Step 5: Live hosting (Cloudflare Pages)
@@ -24,7 +24,21 @@ You need Node.js 22 or later.
 
 ```bash
 npm install
-npm test
+npm test        # run the calculation tests
+npm run dev     # run the app locally at http://localhost:5173
+npm run build   # check types and build the live site into dist/
 ```
+
+## How it's organised
+
+| Folder | What's in it |
+|---|---|
+| `index.html` | The public homepage. Edit the wording here. |
+| `app/index.html` | The page that loads the app at `/app`. |
+| `src/lib/money/` | All money and tax calculations, with tests. See its README. |
+| `src/app/views/` | One file per screen (Track, Overview, Clients, Invoices, Expenses, Money, Settings). |
+| `src/app/store/` | Where data is saved. `localStore.ts` uses the browser; the online database comes in step 3. |
+| `src/styles/kita.css` | Colours, light and dark mode, and layout. |
+| `prototype/kita.html` | The original single-file prototype, for reference. |
 
 Tax figures are estimates, not tax advice.

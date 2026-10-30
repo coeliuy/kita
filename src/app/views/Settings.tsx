@@ -1,0 +1,112 @@
+import { useState } from 'react';
+import { ratesForTaxYear, taxYearLabel, taxYearOf, type PaymentTerms } from '../../lib/money';
+import { ConfirmButton, NumberField, TaxYearSelect } from '../components/ui';
+import { download, entriesCsv } from '../lib/files';
+import { today } from '../lib/format';
+import { ratesFor, yearSettings } from '../lib/selectors';
+import { useKita } from '../store/KitaProvider';
+import type { RateOverrides, Settings as SettingsT, Theme } from '../store/types';
+
+const RATE_FIELDS: [keyof RateOverrides, string, number][][] = [
+  [['personalAllowance', 'Personal Allowance (£)', 1], ['basicRateBand', 'Basic rate band (£)', 1], ['additionalRateThreshold', 'Additional rate starts (£)', 1], ['allowanceTaperThreshold', 'Allowance tapers above (£)', 1]],
+  [['basicRate', 'Basic rate (%)', 0.1], ['higherRate', 'Higher rate (%)', 0.1], ['additionalRate', 'Additional rate (%)', 0.1]],
+  [['class4LowerProfitsLimit', 'Class 4 lower limit (£)', 1], ['class4UpperProfitsLimit', 'Class 4 upper limit (£)', 1], ['class4MainRate', 'Class 4 main rate (%)', 0.1], ['class4UpperRate', 'Class 4 rate above upper limit (%)', 0.1]],
+];
+
+function Text({ k, label, type = 'text', area }: { k: keyof SettingsT; label: string; type?: string; area?: boolean }) {
+  const { data, updateSettings } = useKita();
+  const value = String(data.settings[k] ?? '');
+  const onChange = (v: string) => updateSettings({ [k]: v });
+  return (
+    <label className="f"><span>{label}</span>
+      {area ? <textarea value={value} onChange={e => onChange(e.target.value)} /> : <input type={type} value={value} onChange={e => onChange(e.target.value)} />}
+    </label>
+  );
+}
+
+export function Settings() {
+  const { data, storeKind, updateSettings, updateYear, loadDemo, clearData, toast } = useKita();
+  const s = data.settings;
+  const [ty, setTy] = useState(() => taxYearOf(today()));
+  const r = ratesFor(data, ty);
+  const hmrc = ratesForTaxYear(ty).rates;
+  const setRate = (k: keyof RateOverrides, v: number) => {
+    const overrides = { ...yearSettings(data, ty).rateOverrides };
+    if (v === hmrc[k]) delete overrides[k];
+    else overrides[k] = v;
+    updateYear(ty, { rateOverrides: overrides });
+  };
+
+  return (
+    <>
+      <section>
+        <h1>Settings</h1>
+        <p className="sub" style={{ marginTop: 6 }}>{storeKind === 'cloud' ? 'Your data is saved to your account and is private to you.' : 'Your data is saved in this browser only.'}</p>
+      </section>
+      <section>
+        <div className="head"><h2>Your details on invoices</h2></div>
+        <div className="grid"><Text k="name" label="Your name" /><Text k="business" label="Business name (optional)" /><Text k="email" label="Email" type="email" /></div>
+        <div className="grid" style={{ marginTop: 12 }}><Text k="address" label="Address" area /><Text k="payment" label="How to pay you (bank details, payment link)" area /></div>
+        <p className="fine" style={{ marginTop: 10 }}>Changes apply to new invoices. Invoices you’ve already created keep the details they were made with.</p>
+      </section>
+      <section>
+        <div className="head"><h2>Invoices</h2></div>
+        <div className="grid">
+          <Text k="invPrefix" label="Number prefix" />
+          <NumberField label="Next invoice number" value={s.nextInv} onChange={v => updateSettings({ nextInv: Math.max(1, Math.floor(v)) })} />
+          <label className="f"><span>Payment terms</span>
+            <select value={s.terms} onChange={e => updateSettings({ terms: e.target.value as PaymentTerms })}>
+              <option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option><option value="eofm">End of the following month</option>
+            </select>
+          </label>
+        </div>
+        <div className="row" style={{ marginTop: 12, alignItems: 'center' }}>
+          <label className="check"><input type="checkbox" checked={s.vatRegistered} onChange={e => updateSettings({ vatRegistered: e.target.checked })} /> I’m VAT registered</label>
+          {s.vatRegistered && <div style={{ maxWidth: 140 }}><NumberField label="VAT rate (%)" value={s.vatRate} onChange={v => updateSettings({ vatRate: v })} /></div>}
+          {s.vatRegistered && <div style={{ minWidth: 200 }}><Text k="vatNumber" label="VAT registration number" /></div>}
+        </div>
+      </section>
+      <section>
+        <div className="head">
+          <h2>Tax rates</h2>
+          <TaxYearSelect value={ty} onChange={setTy} />
+        </div>
+        <p className="sub" style={{ marginBottom: 12 }}>
+          {taxYearLabel(ty)}, England, Wales and Northern Ireland.{' '}
+          {r.isFallback ? `HMRC’s rates for this year aren’t in Kita yet, so ${taxYearLabel(r.ratesYear)} rates are shown.` : 'Filled in from HMRC’s published rates.'}
+        </p>
+        {RATE_FIELDS.map((row, i) => (
+          <div className="grid" key={i} style={{ marginTop: i ? 12 : 0 }}>
+            {row.map(([k, label, step]) => <NumberField key={k} label={label} step={step} value={r.rates[k]} onChange={v => setRate(k, v)} />)}
+          </div>
+        ))}
+        <div className="row" style={{ marginTop: 10, alignItems: 'center' }}>
+          <p className="fine">You only need to change these if your situation differs from the standard rates. Kita adds HMRC’s new rates each April.</p>
+          {r.overridden && <button className="btn sm" onClick={() => updateYear(ty, { rateOverrides: {} })}>Reset to HMRC rates</button>}
+        </div>
+      </section>
+      <section>
+        <div className="head"><h2>Appearance</h2></div>
+        <label className="f" style={{ maxWidth: 220 }}><span>Theme</span>
+          <select value={s.theme} onChange={e => updateSettings({ theme: e.target.value as Theme })}>
+            <option value="">Match my device</option><option value="light">Light</option><option value="dark">Dark</option>
+          </select>
+        </label>
+      </section>
+      <section>
+        <div className="head"><h2>Your data</h2></div>
+        <div className="row">
+          <button className="btn" onClick={() => download('kita-time-entries.csv', entriesCsv(data), 'text/csv')}>Download time entries (CSV)</button>
+          <button className="btn" onClick={() => download('kita-backup.json', JSON.stringify(data, null, 2), 'application/json')}>Download everything (JSON)</button>
+        </div>
+        <p className="fine" style={{ marginTop: 10 }}>To use your time in Google Sheets, download the CSV and choose File, then Import, in Sheets.</p>
+        <div className="row" style={{ marginTop: 16 }}>
+          {data.clients.some(c => c.demo)
+            ? <button className="btn" onClick={async () => { await clearData(true); toast('Demo data removed'); }}>Remove demo data</button>
+            : <button className="btn" onClick={async () => { await loadDemo(); toast('Demo data added. Remove it any time in Settings.'); }}>Load demo data</button>}
+          <ConfirmButton className="btn danger" onConfirm={async () => { await clearData(false); toast('All data deleted'); }}>Delete all my data</ConfirmButton>
+        </div>
+      </section>
+    </>
+  );
+}
