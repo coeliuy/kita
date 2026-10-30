@@ -1,0 +1,1216 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kita: time, invoices and take-home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#F6F3F0; --surface:#FFFFFF; --ink:#1F1A17; --muted:#6B625B; --line:#E4DDD6;
+  --accent:#C2410C; --accent-ink:#FFFFFF; --soft:#FCEBDD; --warn:#806300; --warn-soft:#FAF1CC;
+  --bad:#B42318; --bad-soft:#FBE4E1; --field:#FFFFFF;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14110F; --surface:#1C1815; --ink:#EEE8E3; --muted:#A39890; --line:#352D27;
+    --accent:#FB8A3C; --accent-ink:#1A0F08; --soft:#2E1E13; --warn:#E8C547; --warn-soft:#2B2612;
+    --bad:#F07A6F; --bad-soft:#331A18; --field:#171310;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14110F; --surface:#1C1815; --ink:#EEE8E3; --muted:#A39890; --line:#352D27;
+  --accent:#FB8A3C; --accent-ink:#1A0F08; --soft:#2E1E13; --warn:#E8C547; --warn-soft:#2B2612;
+  --bad:#F07A6F; --bad-soft:#331A18; --field:#171310;
+  color-scheme:dark;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2,h3{font-weight:500;line-height:1.2;margin:0}
+h1{font-size:28px;letter-spacing:-.01em}
+h2{font-size:19px}
+h3{font-size:15px;font-weight:600}
+p{margin:0}
+a{color:var(--accent)}
+button,input,select,textarea{font:inherit;color:inherit}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:10px 20px;min-height:56px}
+.brand{font-weight:600;font-size:18px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.brand i{width:12px;height:12px;border-radius:50%;background:var(--accent);display:inline-block}
+.pill{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted);min-width:0}
+.pill.on{color:var(--ink)}
+.pill .live{width:8px;height:8px;border-radius:50%;background:var(--bad);flex:none;animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.pill .live{animation:none}}
+.pill .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill b{font-weight:500}
+
+.app{display:grid;grid-template-columns:200px minmax(0,1fr);max-width:1180px;margin:0 auto}
+#nav{padding:20px 12px;display:flex;flex-direction:column;gap:2px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 56px);align-self:start}
+#nav button{all:unset;cursor:pointer;padding:9px 12px;border-radius:10px;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:11px}
+#nav button:hover{color:var(--ink);background:var(--soft)}
+#nav button[aria-current="page"]{color:var(--accent);background:var(--soft)}
+#nav button:focus-visible{outline:2px solid var(--accent)}
+#nav .spacer{height:1px;background:var(--line);margin:10px 10px}
+svg.i{width:20px;height:20px;flex:none}
+main{padding:24px 28px 80px;min-width:0}
+#tabbar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));justify-content:space-around}
+#tabbar button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:500;color:var(--muted);padding:5px 6px;border-radius:10px;min-width:56px}
+#tabbar button[aria-current="page"]{color:var(--accent)}
+#tabbar button:focus-visible{outline:2px solid var(--accent)}
+@media (max-width:780px){
+  .app{grid-template-columns:1fr}
+  #nav{display:none}
+  #tabbar{display:flex}
+  main{padding:14px 12px calc(88px + env(safe-area-inset-bottom,0px))}
+  .top{padding:8px 16px}
+  #toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  .figs{grid-template-columns:1fr 1fr;gap:16px 18px}
+  .fig .v{font-size:24px}
+  .fig.hero .v{font-size:28px}
+  .cols>div:nth-child(even)>span{visibility:hidden}
+}
+
+.view>section{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:16px}
+.view>section.bare{background:none;border:0;padding:6px 2px 4px}
+.view>section .panel{background:var(--bg);border-color:transparent}
+@media (max-width:780px){.view>section{padding:18px 16px;border-radius:16px}}
+.menu-item{all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--line)}
+.menu-item:last-child{border-bottom:0}
+.menu-item svg{color:var(--accent)}
+.menu-item b{display:block;font-weight:500}
+.menu-item small{color:var(--muted);font-size:13px}
+.menu-item:focus-visible{outline:2px solid var(--accent)}
+.live{width:8px;height:8px;border-radius:50%;background:var(--bad);flex:none;display:inline-block;animation:blink 1.6s infinite}
+@media (prefers-reduced-motion:reduce){.live{animation:none}}
+button.brand{all:unset;cursor:pointer;font-weight:600;font-size:18px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+button.brand:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+
+/* landing */
+#landing{display:none}
+body.is-home #landing{display:block}
+body.is-home .top,body.is-home .app,body.is-home #tabbar{display:none!important}
+body.is-home::before{background:var(--bg)}
+.l-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;align-items:center;justify-content:space-between;padding:14px max(clamp(16px,5vw,48px), calc((100% - 1120px) / 2 + clamp(16px,5vw,48px)));background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.l-wrap{max-width:1120px;margin:0 auto;padding:0 clamp(16px,5vw,48px)}
+.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center;padding:48px 0 80px}
+.hero h1{font-size:clamp(40px,6vw,74px);line-height:1.02;letter-spacing:-.035em;font-weight:500}
+.lede{font-size:19px;line-height:1.55;color:var(--muted);margin:22px 0 30px;max-width:46ch}
+.btn.lg{padding:13px 22px;font-size:16px;border-radius:12px}
+.mock{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:24px;box-shadow:0 40px 80px -40px rgba(120,50,10,.35)}
+.mock .clock{font-size:clamp(52px,6vw,68px);margin:8px 0 6px;color:var(--ink)}
+.mock .bar{margin:8px 0 2px}
+@media (max-width:860px){.hero{grid-template-columns:1fr;gap:36px;padding:24px 0 56px}}
+.l-sec{padding:72px 0;border-top:1px solid var(--line)}
+.l-sec h2{font-size:clamp(28px,3.6vw,42px);letter-spacing:-.025em;max-width:20ch;margin-bottom:16px}
+.intro{font-size:18px;line-height:1.6;color:var(--muted);max-width:58ch}
+.meaning{display:grid;grid-template-columns:auto 1fr;gap:24px 56px;align-items:center}
+.meaning .word{font-size:clamp(96px,16vw,200px);font-weight:500;letter-spacing:-.055em;line-height:.85;color:var(--accent)}
+@media (max-width:700px){.meaning{grid-template-columns:1fr}}
+.feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:36px 40px;margin-top:40px}
+.feat svg{color:var(--accent);width:26px;height:26px}
+.feat h3{margin:12px 0 6px;font-size:18px;font-weight:500}
+.feat p{color:var(--muted)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:40px 0 0}
+.steps li{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:22px 0;border-top:1px solid var(--line)}
+.steps li::before{counter-increment:s;content:counter(s);font-size:32px;font-weight:300;color:var(--accent);line-height:1}
+.steps h3{font-size:18px;font-weight:500;margin-bottom:4px}
+.steps p{color:var(--muted);max-width:60ch}
+.faq{margin-top:28px;max-width:760px}
+.faq details{border-top:1px solid var(--line);padding:18px 0}
+.faq summary{cursor:pointer;font-weight:500;font-size:17px;list-style:none;display:flex;justify-content:space-between;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";color:var(--muted);font-weight:300;font-size:22px;line-height:1}
+.faq details[open] summary::after{content:"−"}
+.faq p{color:var(--muted);margin-top:10px;max-width:64ch}
+.cta{padding:80px 0 96px;border-top:1px solid var(--line)}
+.cta h2{font-size:clamp(32px,5vw,56px);letter-spacing:-.03em;margin-bottom:24px}
+.l-foot{padding:24px 0 40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.sub{color:var(--muted);font-size:14px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+.clock{font-weight:300;font-size:clamp(64px,13vw,128px);line-height:1;letter-spacing:-.035em;margin:4px 0 18px}
+.clock.idle{color:var(--line)}
+.running-note{font-size:17px;margin-bottom:14px}
+.running-note b{font-weight:500}
+
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);min-width:0}
+label.f.grow{flex:1 1 220px}
+label.check{display:flex;gap:8px;align-items:center;font-size:14px}
+input,select,textarea{background:var(--field);border:1px solid var(--line);border-radius:8px;padding:9px 11px;min-width:0;width:100%}
+textarea{min-height:72px;resize:vertical}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+input[type=color]{padding:2px;height:40px}
+.btn{cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.stop{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn.link{border:0;background:none;padding:4px 6px;color:var(--muted);font-weight:500}
+.btn.link:hover{color:var(--ink)}
+.btn.danger{color:var(--bad)}
+.btn[data-armed]{color:var(--bad);border-color:var(--bad)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+.empty{padding:28px;text-align:center;border:1px dashed var(--line);border-radius:12px;color:var(--muted)}
+.empty .btn{margin-top:12px}
+
+.day{margin-bottom:18px}
+.day-h{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:0 0 6px;border-bottom:1px solid var(--line)}
+.entry{display:grid;grid-template-columns:10px minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.dot{width:10px;height:10px;border-radius:50%}
+.entry .t{font-weight:500}
+.entry .m{font-size:13px;color:var(--muted)}
+.dur{font-weight:500;text-align:right}
+.acts{display:flex;gap:2px}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--soft);color:var(--ink);vertical-align:1px}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.tag.good{background:var(--soft);color:var(--accent)}
+
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px 28px}
+.fig .v{font-size:30px;font-weight:300;letter-spacing:-.02em;line-height:1.15}
+.fig .l{font-size:13px;color:var(--muted)}
+.fig.hero .v{font-size:40px;color:var(--accent);font-weight:400}
+
+.cl{display:grid;grid-template-columns:minmax(140px,220px) minmax(100px,1fr) minmax(190px,auto);gap:6px 16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.cl .nm{display:flex;gap:8px;align-items:center;font-weight:500;min-width:0}
+.cl .nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{position:relative;height:10px;background:var(--soft);border-radius:99px;overflow:visible}
+.bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--accent)}
+.bar>i.over{background:var(--bad)}
+.bar>i.near{background:var(--warn)}
+.bar .mk{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.35}
+.cl .num{text-align:right;font-size:14px;white-space:nowrap}
+.cl .note{grid-column:1/-1;font-size:13px}
+
+.cols{display:flex;align-items:flex-end;gap:3px;height:120px;padding-top:8px}
+.cols>div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;min-width:0}
+.cols>div>i{width:100%;max-width:22px;background:var(--accent);border-radius:3px 3px 0 0;min-height:1px;opacity:.85}
+.cols>div.we>i{opacity:.4}
+.cols>div>span{font-size:10px;color:var(--muted)}
+
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:13px;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.r,th.r{text-align:right}
+tr.total td{font-weight:600;border-bottom:0}
+td input{padding:6px 8px}
+
+.prog{height:14px;background:var(--soft);border-radius:99px;overflow:hidden;margin:10px 0 6px}
+.prog i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.callout{border-left:3px solid var(--warn);background:var(--warn-soft);padding:12px 14px;border-radius:0 8px 8px 0;font-size:14px}
+.callout.info{border-color:var(--accent);background:var(--soft)}
+.fine{font-size:13px;color:var(--muted);max-width:72ch}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+.stack>*+*{margin-top:12px}
+.sep{height:1px;background:var(--line);margin:14px 0}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:14px}
+.kv.strong{font-weight:600;border-top:1px solid var(--line);margin-top:4px;padding-top:10px}
+
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:20;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.loading{padding:60px 0;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="top">
+  <button class="brand" data-act="nav" data-view="home" aria-label="About Kita"><i></i>Kita</button>
+  <div class="pill" id="pill"></div>
+</header>
+<div class="app">
+  <nav id="nav" aria-label="Sections"></nav>
+  <main id="view"><div class="loading">Loading your data…</div></main>
+</div>
+<div id="tabbar" role="navigation" aria-label="Sections"></div>
+<div id="landing"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const GBP = new Intl.NumberFormat('en-GB', {style:'currency', currency:'GBP'});
+const GBP0 = new Intl.NumberFormat('en-GB', {style:'currency', currency:'GBP', maximumFractionDigits:0});
+const gbp = n => GBP.format(n || 0);
+const gbp0 = n => GBP0.format(Math.round(n || 0));
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today = () => ymd(new Date());
+const parseYmd = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const hm = min => { min = Math.round(min || 0); return `${Math.floor(min/60)}:${pad(min%60)}`; };
+const hrsTxt = min => `${(min/60).toFixed(1)} h`;
+const fmtDate = s => s ? parseYmd(s).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : '';
+const monthLabel = k => new Date(+k.slice(0,4), +k.slice(5,7)-1, 1).toLocaleDateString('en-GB', {month:'long', year:'numeric'});
+const monthEnd = k => ymd(new Date(+k.slice(0,4), +k.slice(5,7), 0));
+const shiftMonth = (k, n) => { const d = new Date(+k.slice(0,4), +k.slice(5,7)-1+n, 1); return `${d.getFullYear()}-${pad(d.getMonth()+1)}`; };
+const csvq = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+const clean = o => JSON.parse(JSON.stringify(o));
+
+/* tax years run 6 April to 5 April */
+const tyOf = s => { const [y,m,d] = s.split('-').map(Number); return (m > 4 || (m === 4 && d >= 6)) ? y : y - 1; };
+const tyRange = y => [`${y}-04-06`, `${y+1}-04-05`];
+const tyLabel = y => `${y}/${String(y+1).slice(2)}`;
+const inRange = (s, [a,b]) => s >= a && s <= b;
+const quarters = y => [[`${y}-04-06`,`${y}-07-05`],[`${y}-07-06`,`${y}-10-05`],[`${y}-10-06`,`${y+1}-01-05`],[`${y+1}-01-06`,`${y+1}-04-05`]];
+
+const COLORS = ['#1F6F5C','#3B6FB6','#B5541E','#7A4FB0','#A1306B','#5E7F1E','#2C8A9E','#8A6D1F'];
+const CATS = ['Office costs and equipment','Travel','Clothing (uniforms only)','Staff and subcontractors','Things you buy to resell','Bank and financial costs','Business premises','Advertising and marketing','Software and subscriptions','Training courses','Other allowable costs'];
+const DEFAULTS = {
+  name:'', business:'', address:'', email:'', payment:'',
+  invPrefix:'INV-', nextInv:1, terms:'30', vat:false, vatRate:20,
+  otherIncome:0, goal:0, goalType:'gross', taxSaved:0,
+  tax:{pa:12570, basicBand:37700, addl:125140, taper:100000, r1:20, r2:40, r3:45, c4lo:12570, c4hi:50270, c4a:6, c4b:2},
+  timer:null, theme:''
+};
+const mergeSettings = v => ({...DEFAULTS, ...v, tax:{...DEFAULTS.tax, ...((v && v.tax) || {})}});
+
+let S = {settings:mergeSettings({}), clients:[], entries:[], expenses:[], invoices:[]};
+const UI = {view:'track', week:0, month:today().slice(0,7), ty:tyOf(today()), editEntry:null, editClient:null, editExpense:null, inv:null};
+
+/* ---------- storage: private cloud rows when available, browser storage otherwise ---------- */
+const KINDS = {client:'clients', entry:'entries', expense:'expenses', invoice:'invoices'};
+const LS = 'tally-v1';
+const capDownloads = (window.claude && window.claude.use) ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
+function saveLocal(){ try { localStorage.setItem(LS, JSON.stringify(S)); } catch(e){} }
+function fail(e){ console.warn(e); toast('That change didn’t save. Check your connection and try again.'); }
+const Store = {
+  mode:'local', db:null, base:null, _st:null,
+  async init(){
+    try {
+      if (window.claude && window.claude.use) {
+        const db = await window.claude.use('db');
+        if (db) {
+          const u = await window.claude.use('user');
+          const id = u ? await u.id() : null;
+          if (id) { this.db = db; this.base = 'data/users/' + id; this.mode = 'cloud'; }
+        }
+      }
+    } catch(e){ console.warn(e); }
+  },
+  async load(){
+    if (this.mode === 'cloud') {
+      const snap = await this.db.collection(this.base).get();
+      for (const d of snap.docs) {
+        const v = d.data(); if (!v) continue;
+        if (d.id === 'settings') S.settings = mergeSettings(v);
+        else if (KINDS[v.kind]) S[KINDS[v.kind]].push(v);
+      }
+    } else {
+      try {
+        const raw = localStorage.getItem(LS);
+        if (raw) { const o = JSON.parse(raw); S = {...S, ...o, settings:mergeSettings(o.settings || {})}; }
+      } catch(e){}
+    }
+  },
+  put(kind, obj){
+    const list = S[KINDS[kind]]; const i = list.findIndex(x => x.id === obj.id);
+    if (i >= 0) list[i] = obj; else list.push(obj);
+    return this.write(kind + '_' + obj.id, {...obj, kind});
+  },
+  del(kind, id){
+    S[KINDS[kind]] = S[KINDS[kind]].filter(x => x.id !== id);
+    if (this.mode === 'cloud') return this.db.collection(this.base).doc(kind + '_' + id).delete().catch(fail);
+    saveLocal(); return Promise.resolve();
+  },
+  write(docId, data){
+    if (this.mode === 'cloud') return this.db.collection(this.base).doc(docId).set(clean(data)).catch(fail);
+    saveLocal(); return Promise.resolve();
+  },
+  saveSettings(now){
+    clearTimeout(this._st);
+    if (now) return this.write('settings', S.settings);
+    this._st = setTimeout(() => this.write('settings', S.settings), 400);
+  }
+};
+
+/* ---------- money maths ---------- */
+const client = id => S.clients.find(c => c.id === id);
+const activeClients = () => S.clients.filter(c => !c.archived).sort((a,b) => a.name.localeCompare(b.name));
+const entriesIn = (a, b, cid) => S.entries.filter(e => e.date >= a && e.date <= b && (!cid || e.clientId === cid));
+const sumMin = list => list.reduce((t, e) => t + (+e.minutes || 0), 0);
+const billMin = list => sumMin(list.filter(e => e.billable !== false));
+const invSubtotal = lines => lines.reduce((t, l) => t + (+l.qty || 0) * (+l.unit || 0), 0);
+
+function workValue(c, billableMinutes){
+  if (!c) return 0;
+  const h = billableMinutes / 60;
+  if (c.billing === 'hourly') return h * (+c.rate || 0);
+  if (c.billing === 'retainer') return (+c.fee || 0) + Math.max(0, h - (+c.included || 0)) * (+c.rate || 0);
+  return 0;
+}
+function incomeTax(total, t){
+  let pa = t.pa;
+  if (total > t.taper) pa = Math.max(0, pa - (total - t.taper) / 2);
+  const tx = Math.max(0, total - pa);
+  const b = Math.min(tx, t.basicBand);
+  const h = Math.min(Math.max(tx - t.basicBand, 0), Math.max(t.addl - t.basicBand, 0));
+  const a = Math.max(tx - t.addl, 0);
+  return b * t.r1/100 + h * t.r2/100 + a * t.r3/100;
+}
+function class4(p, t){
+  return Math.max(0, Math.min(p, t.c4hi) - t.c4lo) * t.c4a/100 + Math.max(0, p - t.c4hi) * t.c4b/100;
+}
+function taxOn(profit){
+  const t = S.settings.tax, other = +S.settings.otherIncome || 0, p = Math.max(0, profit);
+  const it = incomeTax(other + p, t) - incomeTax(other, t);
+  const ni = class4(p, t);
+  return {it, ni, total: it + ni};
+}
+function yearFigures(y){
+  const r = tyRange(y);
+  const inv = S.invoices.filter(i => inRange(i.issueDate, r));
+  const income = inv.reduce((t, i) => t + (+i.subtotal || 0), 0);
+  const exp = S.expenses.filter(x => inRange(x.date, r)).reduce((t, x) => t + (+x.amount || 0), 0);
+  const profit = income - exp;
+  const tax = taxOn(profit);
+  const mins = sumMin(entriesIn(r[0], r[1]));
+  return {income, exp, profit, tax, net: profit - tax.total, mins};
+}
+function yearProgress(y){
+  const [a, b] = tyRange(y), t = today();
+  if (t < a) return 0; if (t > b) return 1;
+  return Math.min(1, Math.max(0.02, (parseYmd(t) - parseYmd(a)) / (parseYmd(b) - parseYmd(a))));
+}
+function monthData(key){
+  const a = key + '-01', b = monthEnd(key);
+  const ents = entriesIn(a, b);
+  const rows = S.clients.map(c => {
+    const es = ents.filter(e => e.clientId === c.id);
+    const min = sumMin(es), bmin = billMin(es);
+    const invoicedHere = S.invoices.filter(i => i.clientId === c.id && i.period === key);
+    let value;
+    if (c.billing === 'fixed') value = S.invoices.filter(i => i.clientId === c.id && i.issueDate >= a && i.issueDate <= b).reduce((t,i) => t + i.subtotal, 0);
+    else if (c.billing === 'retainer') value = (min > 0 || !c.archived) ? workValue(c, bmin) : 0;
+    else value = workValue(c, bmin);
+    return {c, min, bmin, value, invoiced: invoicedHere.length > 0};
+  }).filter(r => r.min > 0 || r.value > 0 || (r.c.billing === 'retainer' && !r.c.archived));
+  const unbilled = rows.filter(r => !r.invoiced && r.c.billing !== 'fixed').reduce((t, r) => t + r.value, 0);
+  return {rows, mins: sumMin(ents), value: rows.reduce((t, r) => t + r.value, 0), unbilled, ents};
+}
+function dueFrom(issue){
+  const d = parseYmd(issue);
+  if (S.settings.terms === 'eofm') return ymd(new Date(d.getFullYear(), d.getMonth() + 2, 0));
+  d.setDate(d.getDate() + (+S.settings.terms || 30));
+  return ymd(d);
+}
+function parseDur(s){
+  s = String(s || '').trim().toLowerCase(); let m;
+  if (!s) return 0;
+  if ((m = s.match(/^(\d+):(\d{1,2})$/))) return +m[1]*60 + +m[2];
+  if ((m = s.match(/^(\d+(?:\.\d+)?)\s*m(?:in(?:ute)?s?)?$/))) return Math.round(+m[1]);
+  if ((m = s.match(/^(\d+(?:\.\d+)?)\s*h?(?:rs?|ours?)?$/))) return Math.round(+m[1] * 60);
+  if ((m = s.match(/^(\d+)\s*h\s*(\d+)\s*m?$/))) return +m[1]*60 + +m[2];
+  return 0;
+}
+function elapsed(){
+  const t = S.settings.timer; if (!t) return '0:00:00';
+  const s = Math.max(0, Math.floor((Date.now() - t.startedAt) / 1000));
+  return `${Math.floor(s/3600)}:${pad(Math.floor(s/60)%60)}:${pad(s%60)}`;
+}
+
+/* ---------- UI shell ---------- */
+const VIEWS = [['track','Track'],['overview','Overview'],['clients','Clients'],['invoices','Invoices'],['expenses','Expenses'],['money','Money'],['setup','Settings']];
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
+function applyTheme(){ const th = S.settings.theme; if (th) document.documentElement.dataset.theme = th; else delete document.documentElement.dataset.theme; }
+function go(view){ UI.view = view; if (location.hash !== '#' + view) history.replaceState(null, '', '#' + view); render(); window.scrollTo(0, 0); }
+
+function renderPill(){
+  const p = $('#pill'), t = S.settings.timer;
+  if (t) {
+    const c = client(t.clientId);
+    p.className = 'pill on';
+    p.innerHTML = `<span class="live" aria-hidden="true"></span><span class="who"><b>${esc(c ? c.name : 'Unknown client')}</b>${t.task ? ' · ' + esc(t.task) : ''}</span><b data-elapsed>${elapsed()}</b><button class="btn sm stop" data-act="stop">Stop</button>`;
+  } else {
+    const m = sumMin(entriesIn(today(), today()));
+    p.className = 'pill';
+    p.innerHTML = `<span>Today ${hm(m)}</span>`;
+  }
+}
+const ROUTES = [...VIEWS.map(v => v[0]), 'home', 'more'];
+const ICONS = {
+  track:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5"/>',
+  overview:'<path d="M3 21h18M6 17v-5M11 17V6M16 17v-8M21 17v-3"/>',
+  clients:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6 6 0 0 1 3.5 5.5"/>',
+  invoices:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',
+  expenses:'<path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  money:'<path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="14.5" r="1.2"/>',
+  setup:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  more:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+  home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'
+};
+const icon = k => `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k] || ''}</svg>`;
+function render(){
+  const home = UI.view === 'home';
+  document.body.classList.toggle('is-home', home);
+  if (home) { $('#landing').innerHTML = V.home(); return; }
+  $('#landing').innerHTML = '';
+  $('#nav').innerHTML = VIEWS.map(([k, l]) => `<button data-act="nav" data-view="${k}" ${UI.view === k ? 'aria-current="page"' : ''}>${icon(k)}<span>${l}</span></button>`).join('') + `<div class="spacer"></div><button data-act="nav" data-view="home">${icon('home')}<span>About Kita</span></button>`;
+  const cur = ['clients','expenses','setup','more'].includes(UI.view) ? 'more' : UI.view;
+  $('#tabbar').innerHTML = [['track','Track'],['overview','Overview'],['invoices','Invoices'],['money','Money'],['more','More']].map(([k, l]) => `<button data-act="nav" data-view="${k}" ${cur === k ? 'aria-current="page"' : ''}>${icon(k)}<span>${l}</span></button>`).join('');
+  renderPill();
+  const fn = V[UI.view] || V.track;
+  $('#view').innerHTML = `<div class="view">${fn()}</div>`;
+}
+const clientOptions = (sel, allowNone) => (allowNone ? `<option value="">No client</option>` : '') + activeClients().map(c => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+const noClients = () => `<div class="empty"><p>Add a client first. Kita uses each client’s rate to work out what your time is worth.</p><button class="btn primary" data-act="nav" data-view="clients">Add a client</button> <button class="btn" data-act="demo">Try it with demo data</button></div>`;
+
+/* ---------- views ---------- */
+const V = {};
+
+V.track = () => {
+  if (!activeClients().length) return `<section><h1>Track time</h1><p class="sub" style="margin:6px 0 20px">Start a timer or add time after the fact.</p>${noClients()}</section>`;
+  const t = S.settings.timer, last = S.entries.slice().sort((a,b) => (b.createdAt||0) - (a.createdAt||0))[0];
+  const timerBlock = t ? `
+    <div class="clock" data-elapsed>${elapsed()}</div>
+    <p class="running-note">Tracking <b>${esc((client(t.clientId)||{}).name || '')}</b>${t.task ? ': ' + esc(t.task) : ''}</p>
+    <button class="btn stop" data-act="stop">Stop and save</button> <button class="btn link" data-act="discard">Discard</button>`
+  : `
+    <div class="clock idle">0:00:00</div>
+    <form data-form="timer" class="row">
+      <label class="f"><span>Client</span><select name="clientId">${clientOptions(last && last.clientId)}</select></label>
+      <label class="f grow"><span>What are you working on?</span><input name="task" placeholder="e.g. LinkedIn posts" autocomplete="off"></label>
+      <button class="btn primary">Start timer</button>
+    </form>`;
+
+  const ed = UI.editEntry ? S.entries.find(e => e.id === UI.editEntry) : null;
+  const form = `
+    <form data-form="entry" class="stack">
+      <div class="grid">
+        <label class="f"><span>Date</span><input type="date" name="date" value="${ed ? ed.date : today()}" required></label>
+        <label class="f"><span>Client</span><select name="clientId">${clientOptions(ed ? ed.clientId : (last && last.clientId))}</select></label>
+        <label class="f"><span>Time spent</span><input name="dur" placeholder="1:30 or 1.5" value="${ed ? hm(ed.minutes) : ''}" required></label>
+      </div>
+      <div class="grid">
+        <label class="f"><span>Task</span><input name="task" value="${esc(ed ? ed.task : '')}" placeholder="e.g. Campaign report"></label>
+        <label class="f"><span>Note (optional)</span><input name="note" value="${esc(ed ? ed.note : '')}"></label>
+      </div>
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <label class="check"><input type="checkbox" name="billable" ${!ed || ed.billable !== false ? 'checked' : ''}> Billable</label>
+        <div class="row">${ed ? `<button type="button" class="btn link" data-act="cancelEdit">Cancel</button><button class="btn primary">Save changes</button>` : `<button class="btn primary">Add time</button>`}</div>
+      </div>
+    </form>`;
+
+  const now = new Date(); const dow = (now.getDay() + 6) % 7;
+  const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow + UI.week * 7);
+  const days = [...Array(7)].map((_, i) => ymd(new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i)));
+  const weekEnts = entriesIn(days[0], days[6]);
+  const list = days.slice().reverse().map(d => {
+    const es = weekEnts.filter(e => e.date === d).sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    if (!es.length) return '';
+    return `<div class="day"><div class="day-h"><span>${parseYmd(d).toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'short'})}</span><span>${hm(sumMin(es))}</span></div>
+      ${es.map(e => { const c = client(e.clientId) || {name:'Deleted client', color:'#999'}; return `
+        <div class="entry">
+          <span class="dot" style="background:${esc(c.color)}"></span>
+          <div><div class="t">${esc(e.task || 'Untitled task')}</div><div class="m">${esc(c.name)}${e.note ? ' · ' + esc(e.note) : ''} ${e.billable === false ? '<span class="tag">Not billable</span>' : ''} ${e.invoiceId ? '<span class="tag good">Invoiced</span>' : ''}</div></div>
+          <div class="dur">${hm(e.minutes)}</div>
+          <div class="acts"><button class="btn link" data-act="editEntry" data-id="${e.id}">Edit</button><button class="btn link danger" data-act="delEntry" data-id="${e.id}">Delete</button></div>
+        </div>`; }).join('')}</div>`;
+  }).join('');
+  const wkLabel = UI.week === 0 ? 'This week' : UI.week === -1 ? 'Last week' : `Week of ${fmtDate(days[0])}`;
+
+  return `
+  <section>${timerBlock}</section>
+  <section id="manual"><div class="head"><h2>${ed ? 'Edit time entry' : 'Add time manually'}</h2></div><div class="panel">${form}</div></section>
+  <section>
+    <div class="head"><h2>${wkLabel} <span class="sub">${hm(sumMin(weekEnts))} tracked</span></h2>
+      <div class="row"><button class="btn sm" data-act="week" data-dir="-1">Previous</button><button class="btn sm" data-act="week" data-dir="1" ${UI.week >= 0 ? 'disabled' : ''}>Next</button></div></div>
+    ${list || `<div class="empty">No time tracked this week yet.</div>`}
+  </section>`;
+};
+
+V.overview = () => {
+  const k = UI.month, md = monthData(k);
+  const dim = +monthEnd(k).slice(8);
+  const perDay = [...Array(dim)].map((_, i) => { const d = `${k}-${pad(i+1)}`; return {d, m: sumMin(md.ents.filter(e => e.date === d))}; });
+  const maxDay = Math.max(60, ...perDay.map(x => x.m));
+  const workDays = perDay.filter(x => x.m > 0).length;
+  const rows = md.rows.sort((a,b) => b.min - a.min).map(r => {
+    const c = r.c, h = r.min / 60;
+    let barHtml, note = '';
+    if (c.billing === 'retainer' && +c.included) {
+      const used = r.bmin / 60 / +c.included, pct = Math.min(used, 1.25) / 1.25 * 100;
+      const cls = used > 1 ? 'over' : used >= .8 ? 'near' : '';
+      barHtml = `<div class="bar" title="${(used*100).toFixed(0)}% of retainer used"><i class="${cls}" style="width:${pct}%"></i><span class="mk" style="left:${100/1.25}%"></span></div>`;
+      if (used > 1) note = `<span class="tag bad">${((r.bmin/60) - c.included).toFixed(1)} h over the ${c.included} h retainer${+c.rate ? '. Bill the extra at ' + gbp(c.rate) + '/h' : ''}</span>`;
+      else if (used >= .8) note = `<span class="tag warn">${(used*100).toFixed(0)}% of the ${c.included} h retainer used</span>`;
+      else note = `<span class="muted">${(+c.included - r.bmin/60).toFixed(1)} of ${c.included} retainer hours left</span>`;
+    } else {
+      const maxMin = Math.max(...md.rows.map(x => x.min), 1);
+      barHtml = `<div class="bar"><i style="width:${r.min / maxMin * 100}%;background:${esc(c.color)}"></i></div>`;
+    }
+    const eff = h > 0 && r.value > 0 ? `${gbp0(r.value / h)}/h` : '—';
+    return `<div class="cl">
+      <div class="nm"><span class="dot" style="background:${esc(c.color)}"></span><span>${esc(c.name)}</span></div>
+      ${barHtml}
+      <div class="num">${hrsTxt(r.min)} · ${gbp0(r.value)} · <span class="muted">${eff}</span></div>
+      ${note ? `<div class="note">${note}</div>` : ''}
+    </div>`;
+  }).join('');
+  const yf = yearFigures(UI.ty);
+  const goal = +S.settings.goal;
+  const got = S.settings.goalType === 'net' ? yf.net : yf.income;
+  return `
+  <section>
+    <div class="head"><h1>${monthLabel(k)}</h1>
+      <div class="row"><button class="btn sm" data-act="month" data-dir="-1">Previous</button><button class="btn sm" data-act="month" data-dir="1" ${k >= today().slice(0,7) ? 'disabled' : ''}>Next</button></div></div>
+    <div class="figs">
+      <div class="fig"><div class="v">${hm(md.mins)}</div><div class="l">Hours tracked over ${workDays} day${workDays === 1 ? '' : 's'}</div></div>
+      <div class="fig hero"><div class="v">${gbp0(md.value)}</div><div class="l">Value of your work</div></div>
+      <div class="fig"><div class="v">${gbp0(md.mins ? md.value / (md.mins/60) : 0)}</div><div class="l">Average per hour</div></div>
+      <div class="fig"><div class="v">${gbp0(md.unbilled)}</div><div class="l">Not invoiced yet</div></div>
+    </div>
+  </section>
+  <section>
+    <div class="head"><h2>Hours by day</h2></div>
+    <div class="cols" role="img" aria-label="Hours tracked per day">${perDay.map(x => { const wd = parseYmd(x.d).getDay(); return `<div class="${wd === 0 || wd === 6 ? 'we' : ''}" title="${fmtDate(x.d)}: ${hm(x.m)}"><i style="height:${x.m / maxDay * 100}%"></i><span>${+x.d.slice(8)}</span></div>`; }).join('')}</div>
+  </section>
+  <section>
+    <div class="head"><h2>By client</h2><span class="sub">Hours · value · what you actually earn per hour</span></div>
+    ${rows || `<div class="empty">No time tracked in ${monthLabel(k)}.</div>`}
+    ${md.unbilled > 0 ? `<p style="margin-top:14px"><button class="btn primary" data-act="newInvoice">Create an invoice</button></p>` : ''}
+  </section>
+  <section>
+    <div class="head"><h2>Tax year ${tyLabel(UI.ty)}</h2><button class="btn sm" data-act="nav" data-view="money">See take-home and tax</button></div>
+    <div class="figs">
+      <div class="fig"><div class="v">${gbp0(yf.income)}</div><div class="l">Invoiced so far</div></div>
+      <div class="fig"><div class="v">${gbp0(yf.net)}</div><div class="l">Estimated take-home</div></div>
+      <div class="fig"><div class="v">${gbp0(yf.tax.total)}</div><div class="l">To set aside for tax</div></div>
+      ${goal ? `<div class="fig"><div class="v">${Math.round(got / goal * 100)}%</div><div class="l">of your ${gbp0(goal)} ${S.settings.goalType === 'net' ? 'take-home' : 'income'} goal</div></div>` : ''}
+    </div>
+  </section>`;
+};
+
+V.clients = () => {
+  const ed = UI.clientDraft ? UI.clientDraft : UI.editClient === 'new' ? {billing:'hourly', color:COLORS[S.clients.length % COLORS.length]} : UI.editClient ? client(UI.editClient) : null;
+  const list = S.clients.slice().sort((a,b) => (a.archived?1:0) - (b.archived?1:0) || a.name.localeCompare(b.name)).map(c => {
+    const terms = c.billing === 'hourly' ? `${gbp(c.rate)} per hour` : c.billing === 'retainer' ? `${gbp0(c.fee)} a month for ${c.included || 0} h${+c.rate ? `, extra hours ${gbp(c.rate)}` : ''}` : `Fixed fee ${gbp0(c.fee)}`;
+    return `<div class="entry">
+      <span class="dot" style="background:${esc(c.color)}"></span>
+      <div><div class="t">${esc(c.name)} ${c.archived ? '<span class="tag">Archived</span>' : ''}</div><div class="m">${terms}</div></div>
+      <div></div>
+      <div class="acts"><button class="btn link" data-act="editClient" data-id="${c.id}">Edit</button></div>
+    </div>`;
+  }).join('');
+  const b = ed ? ed.billing : 'hourly';
+  const form = ed ? `
+  <section id="cform"><div class="head"><h2>${ed.id ? 'Edit ' + esc(ed.name) : 'New client'}</h2></div>
+  <form data-form="client" class="panel stack">
+    <div class="grid">
+      <label class="f"><span>Client name</span><input name="name" value="${esc(ed.name)}" required></label>
+      <label class="f"><span>How you bill them</span><select name="billing" data-ui="billing">
+        <option value="hourly" ${b==='hourly'?'selected':''}>Hourly</option>
+        <option value="retainer" ${b==='retainer'?'selected':''}>Monthly retainer</option>
+        <option value="fixed" ${b==='fixed'?'selected':''}>Fixed project fee</option></select></label>
+      <label class="f"><span>Colour</span><input type="color" name="color" value="${esc(ed.color || COLORS[0])}"></label>
+    </div>
+    <div class="grid">
+      <label class="f" ${b==='fixed'?'hidden':''}><span>${b === 'retainer' ? 'Rate for extra hours (£)' : 'Hourly rate (£)'}</span><input type="number" step="0.01" min="0" name="rate" value="${ed.rate ?? ''}"></label>
+      <label class="f" ${b==='hourly'?'hidden':''}><span>${b === 'retainer' ? 'Monthly fee (£)' : 'Project fee (£)'}</span><input type="number" step="0.01" min="0" name="fee" value="${ed.fee ?? ''}"></label>
+      <label class="f" ${b!=='retainer'?'hidden':''}><span>Hours included each month</span><input type="number" step="0.5" min="0" name="included" value="${ed.included ?? ''}"></label>
+    </div>
+    <div class="grid">
+      <label class="f"><span>Billing email</span><input type="email" name="email" value="${esc(ed.email)}"></label>
+      <label class="f"><span>Billing address</span><textarea name="address">${esc(ed.address)}</textarea></label>
+    </div>
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div>${ed.id ? `<label class="check"><input type="checkbox" name="archived" ${ed.archived?'checked':''}> Archived (hidden from timers)</label>` : ''}</div>
+      <div class="row">${ed.id ? `<button type="button" class="btn link danger" data-act="delClient" data-id="${ed.id}">Delete</button>` : ''}<button type="button" class="btn link" data-act="cancelClient">Cancel</button><button class="btn primary">${ed.id ? 'Save changes' : 'Add client'}</button></div>
+    </div>
+  </form></section>` : '';
+  return `
+  <section><div class="head"><h1>Clients</h1>${ed ? '' : `<button class="btn primary" data-act="newClient">Add client</button>`}</div>
+  ${list || (ed ? '' : `<div class="empty">No clients yet. Add one with their rate or retainer, and Kita does the maths from there.<br><button class="btn primary" data-act="newClient">Add client</button> <button class="btn" data-act="demo">Try it with demo data</button></div>`)}</section>
+  ${form}`;
+};
+
+V.invoices = () => {
+  const t = today();
+  const unpaid = S.invoices.filter(i => i.status !== 'paid');
+  const overdue = unpaid.filter(i => i.dueDate < t);
+  const thisM = t.slice(0,7), nextM = shiftMonth(thisM, 1);
+  const dueThis = unpaid.filter(i => i.dueDate.slice(0,7) <= thisM).reduce((s,i) => s + i.total, 0);
+  const dueNext = unpaid.filter(i => i.dueDate.slice(0,7) === nextM).reduce((s,i) => s + i.total, 0);
+  const rows = S.invoices.slice().sort((a,b) => b.issueDate.localeCompare(a.issueDate) || b.number.localeCompare(a.number)).map(i => {
+    const st = i.status === 'paid' ? `<span class="tag good">Paid ${fmtDate(i.paidDate)}</span>` : i.dueDate < t ? `<span class="tag bad">Overdue</span>` : `<span class="tag">Due ${fmtDate(i.dueDate)}</span>`;
+    return `<tr><td>${esc(i.number)}</td><td>${esc((client(i.clientId)||{}).name || i.clientName)}</td><td>${fmtDate(i.issueDate)}</td><td class="r">${gbp(i.total)}</td><td>${st}</td>
+      <td class="r" style="white-space:nowrap"><button class="btn link" data-act="pdf" data-id="${i.id}">PDF</button>${i.status === 'paid' ? `<button class="btn link" data-act="markUnpaid" data-id="${i.id}">Mark unpaid</button>` : `<button class="btn link" data-act="markPaid" data-id="${i.id}">Mark paid</button>`}<button class="btn link danger" data-act="delInvoice" data-id="${i.id}">Delete</button></td></tr>`;
+  }).join('');
+  return `
+  ${UI.inv ? invoiceBuilder() : ''}
+  <section>
+    <div class="head"><h1>Invoices</h1>${UI.inv ? '' : `<button class="btn primary" data-act="newInvoice" ${activeClients().length ? '' : 'disabled'}>New invoice</button>`}</div>
+    <div class="figs" style="margin-bottom:20px">
+      <div class="fig"><div class="v">${gbp0(unpaid.reduce((s,i)=>s+i.total,0))}</div><div class="l">Waiting to be paid</div></div>
+      <div class="fig"><div class="v" style="${overdue.length ? 'color:var(--bad)' : ''}">${gbp0(overdue.reduce((s,i)=>s+i.total,0))}</div><div class="l">${overdue.length} overdue</div></div>
+      <div class="fig"><div class="v">${gbp0(dueThis)}</div><div class="l">Due by the end of ${monthLabel(thisM).split(' ')[0]}</div></div>
+      <div class="fig"><div class="v">${gbp0(dueNext)}</div><div class="l">Due in ${monthLabel(nextM).split(' ')[0]}</div></div>
+    </div>
+    ${rows ? `<div class="tw"><table><thead><tr><th>Number</th><th>Client</th><th>Issued</th><th class="r">Total</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="empty">No invoices yet. Kita fills them in from your tracked time.</div>`}
+  </section>`;
+};
+function invoiceBuilder(){
+  const v = UI.inv, c = client(v.clientId), sub = invSubtotal(v.lines), vat = S.settings.vat ? sub * (+S.settings.vatRate || 0) / 100 : 0;
+  const months = [...Array(6)].map((_, i) => shiftMonth(today().slice(0,7), -i));
+  return `<section><div class="head"><h1>New invoice</h1><span class="sub">${esc(S.settings.invPrefix)}${pad3(S.settings.nextInv)}</span></div>
+  <div class="panel stack">
+    <div class="grid">
+      <label class="f"><span>Client</span><select data-ui="invClient">${clientOptions(v.clientId)}</select></label>
+      <label class="f"><span>Work done in</span><select data-ui="invMonth">${months.map(m => `<option value="${m}" ${m===v.month?'selected':''}>${monthLabel(m)}</option>`).join('')}</select></label>
+      <label class="f"><span>Issue date</span><input type="date" data-ui="invIssue" value="${v.issueDate}"></label>
+    </div>
+    <p class="small muted">${v.entryIds.length ? `Filled in from ${v.entryIds.length} uninvoiced time entr${v.entryIds.length === 1 ? 'y' : 'ies'} for ${esc(c ? c.name : '')}. Edit anything before you create it.` : `No uninvoiced time for this client and month. Add lines yourself.`}</p>
+    <div class="tw"><table><thead><tr><th>Description</th><th class="r" style="width:90px">Qty</th><th class="r" style="width:120px">Unit price (£)</th><th class="r" style="width:110px">Amount</th><th style="width:40px"></th></tr></thead><tbody>
+    ${v.lines.map((l, i) => `<tr><td><input data-line="${i}" data-field="desc" value="${esc(l.desc)}"></td><td><input type="number" step="0.01" data-line="${i}" data-field="qty" value="${l.qty}" style="text-align:right"></td><td><input type="number" step="0.01" data-line="${i}" data-field="unit" value="${l.unit}" style="text-align:right"></td><td class="r" data-amt="${i}">${gbp((+l.qty||0)*(+l.unit||0))}</td><td><button class="btn link danger" data-act="delLine" data-i="${i}" aria-label="Remove line">×</button></td></tr>`).join('')}
+    </tbody></table></div>
+    <button class="btn sm" data-act="addLine">Add line</button>
+    <div style="max-width:320px;margin-left:auto" id="invTotals">${totalsHtml(sub, vat)}</div>
+    <label class="f"><span>Note on invoice (optional)</span><input data-ui="invNote" value="${esc(v.note)}" placeholder="Thank you for your business"></label>
+    <div class="row" style="justify-content:flex-end"><button class="btn link" data-act="cancelInvoice">Cancel</button><button class="btn primary" data-act="saveInvoice">Create invoice</button></div>
+  </div></section>`;
+}
+const pad3 = n => String(n).padStart(3, '0');
+const totalsHtml = (sub, vat) => `<div class="kv"><span>Subtotal</span><span>${gbp(sub)}</span></div>${S.settings.vat ? `<div class="kv"><span>VAT at ${S.settings.vatRate}%</span><span>${gbp(vat)}</span></div>` : ''}<div class="kv strong"><span>Total</span><span>${gbp(sub + vat)}</span></div><div class="kv small muted"><span>Due</span><span>${fmtDate(dueFrom(UI.inv.issueDate))}</span></div>`;
+
+V.expenses = () => {
+  const y = UI.ty, r = tyRange(y);
+  const xs = S.expenses.filter(x => inRange(x.date, r)).sort((a,b) => b.date.localeCompare(a.date));
+  const ed = UI.editExpense ? S.expenses.find(x => x.id === UI.editExpense) : null;
+  const byCat = {}; xs.forEach(x => byCat[x.category] = (byCat[x.category] || 0) + (+x.amount || 0));
+  const total = xs.reduce((t,x) => t + (+x.amount||0), 0);
+  return `
+  <section><div class="head"><h1>Expenses</h1>${tySelect()}</div>
+  <form data-form="expense" class="panel stack">
+    <div class="grid">
+      <label class="f"><span>Date</span><input type="date" name="date" value="${ed ? ed.date : today()}" required></label>
+      <label class="f"><span>Amount (£)</span><input type="number" step="0.01" min="0" name="amount" value="${ed ? ed.amount : ''}" required></label>
+      <label class="f"><span>Category</span><select name="category">${CATS.map(c => `<option ${ed && ed.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+    </div>
+    <div class="grid">
+      <label class="f"><span>What was it?</span><input name="desc" value="${esc(ed ? ed.desc : '')}" placeholder="e.g. Canva subscription" required></label>
+      <label class="f"><span>For a client (optional)</span><select name="clientId">${clientOptions(ed && ed.clientId, true)}</select></label>
+    </div>
+    <div class="row" style="justify-content:flex-end">${ed ? `<button type="button" class="btn link" data-act="cancelExpense">Cancel</button><button class="btn primary">Save changes</button>` : `<button class="btn primary">Add expense</button>`}</div>
+  </form>
+  <p class="fine" style="margin-top:10px">Only costs that are wholly for your business count. Categories follow HMRC’s allowable expense groups, so the totals line up with your tax return and quarterly updates.</p>
+  </section>
+  <section><div class="split">
+    <div><div class="head"><h2>${tyLabel(y)} expenses</h2><span class="sub">${gbp(total)}</span></div>
+    ${xs.length ? xs.map(x => `<div class="entry" style="grid-template-columns:minmax(0,1fr) auto auto"><div><div class="t">${esc(x.desc)}</div><div class="m">${fmtDate(x.date)} · ${esc(x.category)}${x.clientId && client(x.clientId) ? ' · ' + esc(client(x.clientId).name) : ''}</div></div><div class="dur">${gbp(x.amount)}</div><div class="acts"><button class="btn link" data-act="editExpense" data-id="${x.id}">Edit</button><button class="btn link danger" data-act="delExpense" data-id="${x.id}">Delete</button></div></div>`).join('') : `<div class="empty">No expenses logged for ${tyLabel(y)}.</div>`}</div>
+    <div><div class="head"><h2>By category</h2></div>
+    ${Object.keys(byCat).length ? Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `<div class="kv"><span>${esc(k)}</span><span>${gbp(v)}</span></div>`).join('') + `<div class="kv strong"><span>Total</span><span>${gbp(total)}</span></div>` : `<p class="muted small">Totals appear here as you add expenses.</p>`}</div>
+  </div></section>`;
+};
+function tySelect(){
+  const years = new Set([tyOf(today())]);
+  [...S.invoices.map(i=>i.issueDate), ...S.expenses.map(x=>x.date), ...S.entries.map(e=>e.date)].forEach(d => d && years.add(tyOf(d)));
+  return `<label class="f" style="flex-direction:row;align-items:center;gap:8px"><span>Tax year</span><select data-ui="ty" style="width:auto">${[...years].sort((a,b)=>b-a).map(y => `<option value="${y}" ${y===UI.ty?'selected':''}>${tyLabel(y)}</option>`).join('')}</select></label>`;
+}
+
+V.money = () => {
+  const y = UI.ty, f = yearFigures(y), s = S.settings, prog = yearProgress(y);
+  const live = prog > 0 && prog < 1;
+  const projProfit = live ? f.profit / prog : f.profit, projIncome = live ? f.income / prog : f.income;
+  const projTax = taxOn(projProfit), projNet = projProfit - projTax.total;
+  const rate = projIncome > 0 ? projTax.total / projIncome : 0;
+  const pot = +s.taxSaved || 0, potGap = f.tax.total - pot;
+  const goal = +s.goal || 0, isNet = s.goalType === 'net';
+  const got = isNet ? f.net : f.income;
+  const [, tyEnd] = tyRange(y);
+  const te = parseYmd(tyEnd), tn = new Date();
+  const monthsLeft = live ? Math.max(1, (te.getFullYear() - tn.getFullYear()) * 12 + te.getMonth() - tn.getMonth() + 1) : 0;
+  const remaining = Math.max(0, goal - got);
+  let grossNeeded = remaining;
+  if (isNet && remaining > 0) { let lo = 0, hi = remaining * 3 + 1000; for (let i = 0; i < 60; i++) { const mid = (lo+hi)/2; const p = f.profit + mid; const n = p - taxOn(p).total; if (n - f.net >= remaining) hi = mid; else lo = mid; } grossNeeded = hi; }
+  const avgRate = f.mins > 0 ? f.income / (f.mins / 60) : 0;
+  const hoursNeeded = avgRate > 0 ? grossNeeded / avgRate : 0;
+  const goalPace = live ? goal * prog : goal;
+  const poa = (projTax.total > 1000);
+  const qs = quarters(y).map(([a,b], i) => {
+    const inc = S.invoices.filter(x => inRange(x.issueDate, [a,b])).reduce((t,x)=>t+x.subtotal,0);
+    const ex = S.expenses.filter(x => inRange(x.date, [a,b])).reduce((t,x)=>t+(+x.amount||0),0);
+    return {i, a, b, inc, ex};
+  });
+  return `
+  <section><div class="head"><h1>Money</h1>${tySelect()}</div>
+    <div class="split">
+      <div class="panel">
+        <h3 style="margin-bottom:8px">${tyLabel(y)} so far</h3>
+        <div class="kv"><span>Invoiced${s.vat ? ' (excluding VAT)' : ''}</span><span>${gbp(f.income)}</span></div>
+        <div class="kv"><span>Business expenses</span><span>− ${gbp(f.exp)}</span></div>
+        <div class="kv strong"><span>Profit</span><span>${gbp(f.profit)}</span></div>
+        <div class="kv"><span>Income Tax on this profit</span><span>− ${gbp(f.tax.it)}</span></div>
+        <div class="kv"><span>Class 4 National Insurance</span><span>− ${gbp(f.tax.ni)}</span></div>
+        <div class="kv strong" style="color:var(--accent)"><span>Take-home</span><span>${gbp(f.net)}</span></div>
+      </div>
+      <div class="stack">
+        <div class="fig hero"><div class="v">${Math.round(rate * 100)}%</div><div class="l">Set aside this share of every payment for your tax bill${live ? ', based on your pace this year' : ''}</div></div>
+        ${live ? `<div class="panel"><h3 style="margin-bottom:6px">If you keep this pace all year</h3>
+          <div class="kv"><span>Income</span><span>${gbp0(projIncome)}</span></div>
+          <div class="kv"><span>Tax and NI</span><span>${gbp0(projTax.total)}</span></div>
+          <div class="kv strong"><span>Take-home</span><span>${gbp0(projNet)}</span></div></div>` : ''}
+        <label class="f"><span>Other taxable income this year, such as a salary (£)</span><input type="number" step="1" min="0" data-set="otherIncome" value="${s.otherIncome || ''}" placeholder="0"></label>
+        <p class="fine">A salary uses up your tax-free allowance and lower bands first, so your freelance profit is taxed on top of it. Leaving this blank makes the estimate too low.</p>
+      </div>
+    </div>
+  </section>
+  <section>
+    <div class="head"><h2>Tax pot</h2></div>
+    <div class="split">
+      <div class="stack">
+        <label class="f"><span>Saved for tax so far (£)</span><input type="number" step="1" min="0" data-set="taxSaved" value="${pot || ''}" placeholder="0"></label>
+        <div class="prog"><i style="width:${f.tax.total > 0 ? Math.min(100, pot / f.tax.total * 100) : 0}%"></i></div>
+        <p>${f.tax.total <= 0 ? 'No tax due on this year’s profit yet.' : potGap > 0 ? `Move <b>${gbp0(potGap)}</b> into your tax savings to cover what you owe so far.` : `You’re covered, with ${gbp0(-potGap)} to spare.`}</p>
+      </div>
+      <div class="stack">
+        <div class="callout info">The bill for ${tyLabel(y)} is due by 31 January ${y + 2}.</div>
+        ${poa ? `<div class="callout">Your bill looks likely to be over £1,000. If most of it isn’t already collected through PAYE, HMRC will usually ask for payments on account: two advance payments towards next year, each half of this year’s bill, due 31 January and 31 July. That can make your first January payment much larger than expected.</div>` : ''}
+      </div>
+    </div>
+  </section>
+  <section>
+    <div class="head"><h2>Earnings goal</h2></div>
+    <div class="grid" style="max-width:560px">
+      <label class="f"><span>Goal for ${tyLabel(y)} (£)</span><input type="number" step="100" min="0" data-set="goal" value="${goal || ''}" placeholder="e.g. 40000"></label>
+      <label class="f"><span>Measured as</span><select data-set="goalType"><option value="gross" ${!isNet?'selected':''}>Income invoiced</option><option value="net" ${isNet?'selected':''}>Take-home after tax</option></select></label>
+    </div>
+    ${goal ? `
+      <div class="prog" style="max-width:720px"><i style="width:${Math.min(100, got/goal*100)}%"></i></div>
+      <p class="sub">${gbp0(got)} of ${gbp0(goal)} (${Math.round(got/goal*100)}%)${live ? `. At this point in the year you’d be on pace at ${gbp0(goalPace)}, so you’re <b style="color:${got >= goalPace ? 'var(--accent)' : 'var(--warn)'}">${got >= goalPace ? gbp0(got - goalPace) + ' ahead' : gbp0(goalPace - got) + ' behind'}</b>.` : '.'}</p>
+      ${remaining > 0 && live ? `<div class="figs" style="margin-top:16px">
+        <div class="fig"><div class="v">${gbp0(grossNeeded / monthsLeft)}</div><div class="l">to invoice each month for the ${monthsLeft} month${monthsLeft === 1 ? '' : 's'} left</div></div>
+        ${avgRate ? `<div class="fig"><div class="v">${Math.round(hoursNeeded / monthsLeft)} h</div><div class="l">a month at your average of ${gbp0(avgRate)}/h</div></div>` : ''}
+        ${isNet ? `<div class="fig"><div class="v">${gbp0(grossNeeded)}</div><div class="l">more income needed before tax</div></div>` : ''}
+      </div>` : remaining <= 0 ? `<p style="margin-top:10px"><span class="tag good">Goal reached</span></p>` : ''}` : `<p class="fine" style="margin-top:8px">Set a goal to see whether you’re on pace and how many hours it will take.</p>`}
+  </section>
+  <section>
+    <div class="head"><h2>Quarterly totals</h2><button class="btn sm" data-act="exportQuarters">Download CSV</button></div>
+    <div class="tw"><table><thead><tr><th>Quarter</th><th>Period</th><th class="r">Income</th><th class="r">Expenses</th><th class="r">Profit</th></tr></thead><tbody>
+      ${qs.map(q => `<tr><td>Q${q.i+1}</td><td>${fmtDate(q.a)} to ${fmtDate(q.b)}</td><td class="r">${gbp(q.inc)}</td><td class="r">${gbp(q.ex)}</td><td class="r">${gbp(q.inc - q.ex)}</td></tr>`).join('')}
+      <tr class="total"><td colspan="2">Year</td><td class="r">${gbp(f.income)}</td><td class="r">${gbp(f.exp)}</td><td class="r">${gbp(f.profit)}</td></tr>
+    </tbody></table></div>
+    <p class="fine" style="margin-top:10px">These follow the Making Tax Digital quarters. Sole traders above the income threshold send HMRC a summary like this each quarter through compatible software; the CSV breaks expenses down by category to make that easier.</p>
+  </section>
+  <section><p class="fine">All figures are estimates, not tax advice. They use the England, Wales and Northern Ireland rates in Settings and count income when you issue an invoice. They don’t include student loan repayments, Scottish tax bands, pension contributions, or other reliefs. Check your actual bill with HMRC or an accountant.</p></section>`;
+};
+
+V.setup = () => {
+  const s = S.settings, t = s.tax;
+  const n = (key, label, step) => `<label class="f"><span>${label}</span><input type="number" step="${step || 1}" data-set="${key}" value="${key.split('.').reduce((o,k)=>o[k], s)}"></label>`;
+  return `
+  <section><h1>Settings</h1><p class="sub" style="margin-top:6px">${Store.mode === 'cloud' ? 'Your data is saved to your account and is private to you.' : 'Your data is saved in this browser only.'}</p></section>
+  <section><div class="head"><h2>Your details on invoices</h2></div>
+    <div class="grid">
+      <label class="f"><span>Your name</span><input data-set="name" value="${esc(s.name)}"></label>
+      <label class="f"><span>Business name (optional)</span><input data-set="business" value="${esc(s.business)}"></label>
+      <label class="f"><span>Email</span><input type="email" data-set="email" value="${esc(s.email)}"></label>
+    </div>
+    <div class="grid" style="margin-top:12px">
+      <label class="f"><span>Address</span><textarea data-set="address">${esc(s.address)}</textarea></label>
+      <label class="f"><span>How to pay you (bank details, payment link)</span><textarea data-set="payment">${esc(s.payment)}</textarea></label>
+    </div>
+  </section>
+  <section><div class="head"><h2>Invoices</h2></div>
+    <div class="grid">
+      <label class="f"><span>Number prefix</span><input data-set="invPrefix" value="${esc(s.invPrefix)}"></label>
+      ${n('nextInv', 'Next invoice number')}
+      <label class="f"><span>Payment terms</span><select data-set="terms">${[['7','7 days'],['14','14 days'],['30','30 days'],['eofm','End of the following month']].map(([v,l]) => `<option value="${v}" ${s.terms===v?'selected':''}>${l}</option>`).join('')}</select></label>
+    </div>
+    <div class="row" style="margin-top:12px;align-items:center">
+      <label class="check"><input type="checkbox" data-set="vat" ${s.vat?'checked':''}> I’m VAT registered</label>
+      ${s.vat ? `<label class="f" style="max-width:140px">${''}<span>VAT rate (%)</span><input type="number" data-set="vatRate" value="${s.vatRate}"></label>` : ''}
+    </div>
+  </section>
+  <section><div class="head"><h2>Tax rates</h2><span class="sub">2026/27, England, Wales and Northern Ireland</span></div>
+    <div class="grid">${n('tax.pa','Personal Allowance (£)')}${n('tax.basicBand','Basic rate band (£)')}${n('tax.addl','Additional rate starts (£)')}${n('tax.taper','Allowance tapers above (£)')}</div>
+    <div class="grid" style="margin-top:12px">${n('tax.r1','Basic rate (%)',0.1)}${n('tax.r2','Higher rate (%)',0.1)}${n('tax.r3','Additional rate (%)',0.1)}</div>
+    <div class="grid" style="margin-top:12px">${n('tax.c4lo','Class 4 lower limit (£)')}${n('tax.c4hi','Class 4 upper limit (£)')}${n('tax.c4a','Class 4 main rate (%)',0.1)}${n('tax.c4b','Class 4 rate above upper limit (%)',0.1)}</div>
+    <p class="fine" style="margin-top:10px">Update these when HMRC announces new rates for the next tax year.</p>
+  </section>
+  <section><div class="head"><h2>Appearance</h2></div>
+    <label class="f" style="max-width:220px"><span>Theme</span><select data-set="theme"><option value="" ${!s.theme?'selected':''}>Match my device</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option></select></label>
+  </section>
+  <section><div class="head"><h2>Your data</h2></div>
+    <div class="row">
+      <button class="btn" data-act="exportEntries">Download time entries (CSV)</button>
+      <button class="btn" data-act="exportAll">Download everything (JSON)</button>
+    </div>
+    <p class="fine" style="margin-top:10px">To use your time in Google Sheets, download the CSV and choose File, then Import, in Sheets.</p>
+    <div class="row" style="margin-top:16px">
+      ${S.clients.some(c => c.demo) ? `<button class="btn" data-act="clearDemo">Remove demo data</button>` : `<button class="btn" data-act="demo">Load demo data</button>`}
+      <button class="btn danger" data-act="clearAll">Delete all my data</button>
+    </div>
+  </section>`;
+};
+
+V.more = () => `<section class="bare"><h1>More</h1></section><section>${[['clients','Clients','Rates, retainers and billing details'],['expenses','Expenses','Log business costs in HMRC categories'],['setup','Settings','Your details, invoices, tax rates and data'],['home','About Kita','What Kita does and how to use it']].map(([k, l, d]) => `<button class="menu-item" data-act="nav" data-view="${k}">${icon(k)}<span><b>${l}</b><small>${d}</small></span></button>`).join('')}</section>`;
+
+V.home = () => {
+  const fresh = !S.clients.length;
+  const open = `<button class="btn primary lg" data-act="nav" data-view="${fresh ? 'clients' : 'track'}">${fresh ? 'Get started' : 'Open Kita'}</button>`;
+  const feats = [
+    ['track','Track time without thinking about it','A timer that keeps running if you close the tab, plus quick entries for time you forgot to log. Type 1:30, 1.5 or 90m.'],
+    ['overview','Stay on top of retainers','See hours used against hours agreed for every retainer. Kita warns you at 80% and tells you when to bill for extra hours.'],
+    ['clients','Know your real hourly rate','Fixed fees and retainers hide what a client really pays you per hour. Kita shows it for every client, every month.'],
+    ['invoices','Invoice from your tracked time','Turn a month of work into an invoice in seconds, download it as a PDF, and see what’s owed, overdue and due next.'],
+    ['expenses','Log expenses as you go','Record business costs in HMRC’s categories, so your totals line up with your tax return.'],
+    ['money','See what you actually take home','A running estimate of Income Tax and National Insurance, how much to set aside, and how you’re pacing against your earnings goal.']];
+  const steps = [
+    ['Add your clients','Choose how you bill each one: hourly, a monthly retainer with included hours, or a fixed project fee.'],
+    ['Track your time','Start the timer when you begin a task, or add time afterwards. Mark anything you can’t bill as not billable.'],
+    ['Check in each week','Overview shows your hours by day and by client, how much of each retainer is used, and what each client really pays per hour.'],
+    ['Invoice at the end of the month','Pick a client and a month, and Kita fills in the lines from your tracked time. Edit anything, create the invoice and download the PDF. Mark it paid when the money arrives.'],
+    ['Log expenses when they happen','Subscriptions, equipment, travel. It takes seconds and saves a scramble before your tax return.'],
+    ['Check your money','Add any salary, set a goal for the year, and move the suggested amount into your tax savings each month.']];
+  const faqs = [
+    ['Where is my data kept?','Your clients, time and invoices are private to you. You can download everything as a backup from Settings at any time.'],
+    ['How accurate is the tax estimate?','It’s an estimate, not advice. It uses the 2026/27 rates for England, Wales and Northern Ireland, includes Class 4 National Insurance, and accounts for a salary if you add one. It doesn’t yet cover Scottish tax bands, student loans or pension relief.'],
+    ['Does it work with Making Tax Digital?','Kita groups your income and expenses into the Making Tax Digital quarters and HMRC’s expense categories, and exports them as a CSV. It doesn’t send updates to HMRC directly.'],
+    ['Can I use my data in Google Sheets?','Yes. Download your time entries or quarterly totals as a CSV from Settings or Money, then import the file into Sheets.'],
+    ['What does it cost?','Kita is free while it’s in early preview.']];
+  return `
+  <header class="l-top"><span class="brand"><i></i>Kita</span>${open.replace(' lg','')}</header>
+  <div class="l-wrap">
+    <section class="hero">
+      <div>
+        <h1>Track the hours. Send the invoice. Know what you keep.</h1>
+        <p class="lede">Kita is a time tracker for freelancers that follows your work all the way to your bank account: retainers, invoices, expenses and a running estimate of the tax you’ll owe.</p>
+        <div class="row">${open}${fresh ? `<button class="btn lg" data-act="demoHome">Try it with demo data</button>` : ''}</div>
+        <p class="small muted" style="margin-top:16px">Built for UK freelancers and sole traders. Free during early preview.</p>
+      </div>
+      <div class="mock" aria-hidden="true">
+        <div class="row" style="align-items:center;gap:8px"><span class="live"></span><span class="small muted">Tracking for Northlight Legal</span></div>
+        <div class="clock" data-demo>1:24:07</div>
+        <p style="font-weight:500">LinkedIn posts</p>
+        <div class="sep"></div>
+        <div class="kv small" style="padding:0"><span>Retainer this month</span><span>18 of 25 h</span></div>
+        <div class="bar"><i style="width:57.6%"></i><span class="mk" style="left:80%"></span></div>
+        <div class="sep"></div>
+        <div class="kv"><span>Take-home this tax year</span><b>£18,420</b></div>
+        <div class="kv"><span>Set aside from each payment</span><b style="color:var(--accent)">24%</b></div>
+        <div class="kv"><span>Waiting to be paid</span><b>£2,350</b></div>
+      </div>
+    </section>
+    <section class="l-sec meaning">
+      <div class="word">Kita</div>
+      <div><h2>Kita is Filipino for earnings.</h2><p class="intro">It also means “to see”. That’s the idea behind the app: see where your time goes, and see what it’s really worth once expenses and tax come out.</p></div>
+    </section>
+    <section class="l-sec">
+      <h2>Most time trackers stop at the timesheet.</h2>
+      <p class="intro">The harder part of freelancing comes after. A retainer quietly runs over. An invoice slips past its due date. January arrives with a tax bill bigger than you planned for. Kita connects your hours to the money side, so none of that takes you by surprise.</p>
+      <div class="feat">${feats.map(([k, t, d]) => `<div>${icon(k)}<h3>${t}</h3><p>${d}</p></div>`).join('')}</div>
+    </section>
+    <section class="l-sec">
+      <h2>How to use Kita</h2>
+      <p class="intro">Ten minutes to set up, then a few seconds a day.</p>
+      <ol class="steps">${steps.map(([t, d]) => `<li><div><h3>${t}</h3><p>${d}</p></div></li>`).join('')}</ol>
+    </section>
+    <section class="l-sec">
+      <h2>Questions</h2>
+      <div class="faq">${faqs.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('')}</div>
+    </section>
+    <section class="cta">
+      <h2>Start with this week’s hours.</h2>
+      <div class="row">${open}</div>
+    </section>
+    <footer class="l-foot">Kita is an early preview, built in the UK. Tax figures are estimates, not financial advice.</footer>
+  </div>`;
+};
+
+/* ---------- actions ---------- */
+function arm(el, fn){
+  if (el.dataset.armed) { fn(); return; }
+  const old = el.textContent; el.dataset.armed = '1'; el.textContent = 'Click again to confirm';
+  setTimeout(() => { if (el.isConnected) { delete el.dataset.armed; el.textContent = old; } }, 3000);
+}
+function startInvoice(clientId, month){
+  const cid = clientId || (activeClients()[0] || {}).id;
+  const m = month || UI.month || today().slice(0,7);
+  const pf = prefill(cid, m);
+  UI.inv = {clientId: cid, month: m, issueDate: today(), note: UI.inv ? UI.inv.note : '', ...pf};
+}
+function prefill(cid, month){
+  const c = client(cid); const ml = monthLabel(month);
+  if (!c) return {lines:[{desc:'', qty:1, unit:0}], entryIds:[]};
+  const es = entriesIn(month + '-01', monthEnd(month), cid).filter(e => !e.invoiceId && e.billable !== false);
+  let lines = [];
+  if (c.billing === 'hourly') {
+    const g = {}; es.forEach(e => { const k = e.task || 'Work'; g[k] = (g[k] || 0) + e.minutes; });
+    lines = Object.entries(g).map(([t, m]) => ({desc:`${t} (${ml})`, qty:+(m/60).toFixed(2), unit:+c.rate || 0}));
+  } else if (c.billing === 'retainer') {
+    const h = sumMin(es) / 60;
+    lines = [{desc:`Monthly retainer, ${ml} (${c.included || 0} hours included)`, qty:1, unit:+c.fee || 0}];
+    const over = h - (+c.included || 0);
+    if (over > 0.01 && +c.rate) lines.push({desc:`Additional hours beyond the retainer, ${ml}`, qty:+over.toFixed(2), unit:+c.rate});
+  } else lines = [{desc:'Project fee', qty:1, unit:+c.fee || 0}];
+  if (!lines.length) lines = [{desc:'', qty:1, unit:0}];
+  return {lines, entryIds: es.map(e => e.id)};
+}
+async function saveInvoice(){
+  const v = UI.inv, c = client(v.clientId);
+  const lines = v.lines.filter(l => l.desc || +l.unit);
+  if (!c || !lines.length) { toast('Add at least one line with a description or price.'); return; }
+  const sub = invSubtotal(lines), vat = S.settings.vat ? sub * (+S.settings.vatRate||0) / 100 : 0;
+  const inv = {id:uid(), number:S.settings.invPrefix + pad3(S.settings.nextInv), clientId:c.id, clientName:c.name, period:v.month,
+    issueDate:v.issueDate, dueDate:dueFrom(v.issueDate), lines, subtotal:+sub.toFixed(2), vat:+vat.toFixed(2), total:+(sub+vat).toFixed(2),
+    status:'unpaid', note:v.note || '', entryIds:v.entryIds, createdAt:Date.now()};
+  S.settings.nextInv = (+S.settings.nextInv || 1) + 1;
+  UI.inv = null;
+  await Store.put('invoice', inv);
+  for (const id of inv.entryIds) { const e = S.entries.find(x => x.id === id); if (e) await Store.put('entry', {...e, invoiceId:inv.id}); }
+  Store.saveSettings(true);
+  render(); toast(`Created ${inv.number}`);
+}
+async function stopTimer(save){
+  const t = S.settings.timer; if (!t) return;
+  S.settings.timer = null;
+  const minutes = Math.round((Date.now() - t.startedAt) / 60000);
+  if (save && minutes >= 1) {
+    await Store.put('entry', {id:uid(), clientId:t.clientId, task:t.task, note:'', date:ymd(new Date(t.startedAt)), minutes, billable:true, createdAt:Date.now()});
+    toast(`Saved ${hm(minutes)}`);
+  } else if (save) toast('Less than a minute, so nothing was saved.');
+  Store.saveSettings(true); render();
+}
+async function saveFile(filename, data){
+  try {
+    const dl = await capDownloads;
+    if (dl) { await dl.save({filename, data}); return; }
+  } catch(e) { if (e && (e.code === 'declined')) return; if (e && e.code === 'rate_limited') { toast('Another download is waiting for confirmation.'); return; } }
+  try {
+    const blob = data instanceof Blob ? data : new Blob([data], {type:'text/plain'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  } catch(e) { toast('Downloads aren’t available here.'); }
+}
+function invoicePdf(inv){
+  const {jsPDF} = window.jspdf; const doc = new jsPDF({unit:'mm', format:'a4'});
+  const s = S.settings, c = client(inv.clientId) || {name:inv.clientName};
+  const L = 20, R = 190; let y = 24;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.text('Invoice', L, y);
+  doc.setFontSize(11); doc.text(inv.number, R, y, {align:'right'});
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); y += 12;
+  const from = [s.business || s.name, s.business ? s.name : '', ...(s.address || '').split('\n'), s.email].filter(Boolean);
+  const to = [c.name, ...(c.address || '').split('\n'), c.email].filter(Boolean);
+  doc.setTextColor(110); doc.text('From', L, y); doc.text('Bill to', 85, y); doc.text('Issued', 150, y); doc.setTextColor(20);
+  let yy = y + 5; from.forEach(l => { doc.text(l, L, yy); yy += 5; });
+  let yt = y + 5; to.forEach(l => { doc.text(l, 85, yt); yt += 5; });
+  doc.text(fmtDate(inv.issueDate), 150, y + 5);
+  doc.setTextColor(110); doc.text('Due', 150, y + 12); doc.setTextColor(20); doc.text(fmtDate(inv.dueDate), 150, y + 17);
+  y = Math.max(yy, yt, y + 22) + 8;
+  doc.setDrawColor(200); doc.line(L, y, R, y); y += 6;
+  doc.setTextColor(110); doc.text('Description', L, y); doc.text('Qty', 130, y, {align:'right'}); doc.text('Unit price', 160, y, {align:'right'}); doc.text('Amount', R, y, {align:'right'});
+  doc.setTextColor(20); y += 3; doc.line(L, y, R, y); y += 6;
+  inv.lines.forEach(l => {
+    const desc = doc.splitTextToSize(l.desc || '', 95);
+    if (y + desc.length * 5 > 265) { doc.addPage(); y = 24; }
+    doc.text(desc, L, y);
+    doc.text(String(+l.qty), 130, y, {align:'right'}); doc.text(gbp(l.unit), 160, y, {align:'right'}); doc.text(gbp((+l.qty||0)*(+l.unit||0)), R, y, {align:'right'});
+    y += desc.length * 5 + 3;
+  });
+  doc.line(L, y, R, y); y += 7;
+  const tot = (label, val, bold) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.text(label, 160, y, {align:'right'}); doc.text(val, R, y, {align:'right'}); y += 6; };
+  tot('Subtotal', gbp(inv.subtotal)); if (inv.vat) tot(`VAT at ${s.vatRate}%`, gbp(inv.vat)); tot('Total due', gbp(inv.total), true);
+  doc.setFont('helvetica', 'normal'); y += 6;
+  if (s.payment) { doc.setTextColor(110); doc.text('Payment details', L, y); doc.setTextColor(20); y += 5; doc.splitTextToSize(s.payment, 170).forEach(l => { doc.text(l, L, y); y += 5; }); y += 3; }
+  if (inv.note) { doc.splitTextToSize(inv.note, 170).forEach(l => { doc.text(l, L, y); y += 5; }); }
+  return doc.output('blob');
+}
+async function loadDemo(){
+  toast('Adding demo data…');
+  const cs = [
+    {id:uid(), name:'Harbour & Pine Studio', billing:'hourly', rate:45, color:COLORS[1], demo:true},
+    {id:uid(), name:'Northlight Legal', billing:'retainer', fee:1200, included:25, rate:50, color:COLORS[0], demo:true},
+    {id:uid(), name:'Fennel Bakery', billing:'fixed', fee:900, rate:0, color:COLORS[2], demo:true}];
+  const tasks = [['Social content','Campaign reporting','Client call'],['LinkedIn posts','Newsletter','Strategy call'],['Website copy','Brand messaging']];
+  const writes = cs.map(c => ['client', c]);
+  const ents = [];
+  const now = new Date();
+  for (let i = 55; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i); const wd = d.getDay();
+    if (wd === 0 || wd === 6) continue;
+    const n = 1 + Math.floor(Math.random() * 3);
+    for (let j = 0; j < n; j++) {
+      const ci = Math.random() < .5 ? 1 : Math.random() < .7 ? 0 : 2;
+      const e = {id:uid(), clientId:cs[ci].id, task:tasks[ci][Math.floor(Math.random()*tasks[ci].length)], note:'', date:ymd(d), minutes:30 + 15*Math.floor(Math.random()*8), billable:Math.random() > .08, createdAt:d.getTime() + j, demo:true};
+      ents.push(e); S.entries.push(e); writes.push(['entry', e]);
+    }
+  }
+  S.clients.push(...cs);
+  const prev = shiftMonth(today().slice(0,7), -1);
+  for (const c of cs.slice(0, 2)) {
+    const pf = prefill(c.id, prev); const sub = invSubtotal(pf.lines);
+    const inv = {id:uid(), number:S.settings.invPrefix + pad3(S.settings.nextInv++), clientId:c.id, clientName:c.name, period:prev, issueDate:monthEnd(prev), dueDate:'', lines:pf.lines, subtotal:+sub.toFixed(2), vat:0, total:+sub.toFixed(2), status:'unpaid', note:'', entryIds:pf.entryIds, createdAt:Date.now(), demo:true};
+    inv.dueDate = dueFrom(inv.issueDate);
+    if (c.billing === 'hourly') { inv.status = 'paid'; inv.paidDate = today(); }
+    writes.push(['invoice', inv]);
+    pf.entryIds.forEach(id => { const e = ents.find(x => x.id === id); if (e) e.invoiceId = inv.id; });
+  }
+  [['Canva Pro subscription', 13, 'Software and subscriptions', 3], ['Laptop stand', 35, 'Office costs and equipment', 20], ['Train to client workshop', 42.6, 'Travel', 12], ['Paid social course', 120, 'Training courses', 30]]
+    .forEach(([desc, amount, category, ago]) => { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ago); writes.push(['expense', {id:uid(), date:ymd(d), amount, category, desc, clientId:'', demo:true}]); });
+  S.entries = S.entries.filter(e => !e.demo);
+  S.clients = S.clients.filter(c => !c.demo);
+  for (let i = 0; i < writes.length; i += 10) await Promise.all(writes.slice(i, i+10).map(([k, o]) => Store.put(k, o)));
+  Store.saveSettings(true);
+  render(); toast('Demo data added. Remove it any time in Settings.');
+}
+async function clearWhere(pred){
+  const jobs = [];
+  for (const [kind, key] of Object.entries(KINDS)) S[key].filter(pred).forEach(o => jobs.push([kind, o.id]));
+  for (let i = 0; i < jobs.length; i += 10) await Promise.all(jobs.slice(i, i+10).map(([k, id]) => Store.del(k, id)));
+}
+
+const ACT = {
+  nav: d => { UI.editEntry = UI.editClient = UI.editExpense = UI.clientDraft = null; go(d.view); },
+  week: d => { UI.week = Math.min(0, UI.week + +d.dir); render(); },
+  month: d => { UI.month = shiftMonth(UI.month, +d.dir); render(); },
+  stop: () => stopTimer(true),
+  discard: (d, el) => arm(el, () => { stopTimer(false); toast('Timer discarded'); }),
+  editEntry: d => { UI.editEntry = d.id; render(); $('#manual').scrollIntoView({behavior:'smooth'}); },
+  cancelEdit: () => { UI.editEntry = null; render(); },
+  delEntry: (d, el) => arm(el, async () => { await Store.del('entry', d.id); render(); toast('Entry deleted'); }),
+  newClient: () => { UI.editClient = 'new'; UI.clientDraft = null; render(); const f = $('#cform'); if (f) f.scrollIntoView({behavior:'smooth'}); },
+  editClient: d => { UI.editClient = d.id; UI.clientDraft = null; render(); $('#cform').scrollIntoView({behavior:'smooth'}); },
+  cancelClient: () => { UI.editClient = null; UI.clientDraft = null; render(); },
+  delClient: (d, el) => arm(el, async () => { await Store.del('client', d.id); UI.editClient = null; UI.clientDraft = null; render(); toast('Client deleted. Their time entries are kept.'); }),
+  newInvoice: () => { startInvoice(null, UI.view === 'overview' ? UI.month : null); go('invoices'); },
+  cancelInvoice: () => { UI.inv = null; render(); },
+  addLine: () => { UI.inv.lines.push({desc:'', qty:1, unit:0}); render(); },
+  delLine: d => { UI.inv.lines.splice(+d.i, 1); if (!UI.inv.lines.length) UI.inv.lines.push({desc:'', qty:1, unit:0}); render(); },
+  saveInvoice: () => saveInvoice(),
+  pdf: async d => { const inv = S.invoices.find(i => i.id === d.id); if (!window.jspdf) { toast('The PDF tool didn’t load. Reload the page and try again.'); return; } await saveFile(`${inv.number}.pdf`, invoicePdf(inv)); },
+  markPaid: async d => { const i = S.invoices.find(x => x.id === d.id); await Store.put('invoice', {...i, status:'paid', paidDate:today()}); render(); toast(`${i.number} marked as paid`); },
+  markUnpaid: async d => { const i = S.invoices.find(x => x.id === d.id); const n = {...i, status:'unpaid'}; delete n.paidDate; await Store.put('invoice', n); render(); },
+  delInvoice: (d, el) => arm(el, async () => {
+    const i = S.invoices.find(x => x.id === d.id);
+    for (const e of S.entries.filter(e => e.invoiceId === i.id)) { const n = {...e}; delete n.invoiceId; await Store.put('entry', n); }
+    await Store.del('invoice', d.id); render(); toast(`${i.number} deleted. Its time is uninvoiced again.`);
+  }),
+  editExpense: d => { UI.editExpense = d.id; render(); window.scrollTo({top:0, behavior:'smooth'}); },
+  cancelExpense: () => { UI.editExpense = null; render(); },
+  delExpense: (d, el) => arm(el, async () => { await Store.del('expense', d.id); render(); toast('Expense deleted'); }),
+  exportEntries: () => {
+    const rows = [['Date','Client','Task','Note','Hours','Billable','Invoice'].join(',')].concat(
+      S.entries.slice().sort((a,b) => a.date.localeCompare(b.date)).map(e => [e.date, (client(e.clientId)||{}).name, e.task, e.note, (e.minutes/60).toFixed(2), e.billable === false ? 'No' : 'Yes', (S.invoices.find(i => i.id === e.invoiceId)||{}).number].map(csvq).join(',')));
+    saveFile('kita-time-entries.csv', rows.join('\n'));
+  },
+  exportQuarters: () => {
+    const y = UI.ty;
+    const head = ['Quarter','From','To','Income', ...CATS, 'Total expenses','Profit'];
+    const rows = quarters(y).map(([a,b], i) => {
+      const inc = S.invoices.filter(x => inRange(x.issueDate, [a,b])).reduce((t,x)=>t+x.subtotal,0);
+      const xs = S.expenses.filter(x => inRange(x.date, [a,b]));
+      const cats = CATS.map(c => xs.filter(x => x.category === c).reduce((t,x)=>t+(+x.amount||0),0));
+      const ex = cats.reduce((t,v)=>t+v,0);
+      return [`Q${i+1}`, a, b, inc.toFixed(2), ...cats.map(v=>v.toFixed(2)), ex.toFixed(2), (inc-ex).toFixed(2)].map(csvq).join(',');
+    });
+    saveFile(`kita-quarters-${tyLabel(y).replace('/','-')}.csv`, [head.map(csvq).join(','), ...rows].join('\n'));
+  },
+  exportAll: () => saveFile('kita-backup.json', JSON.stringify(S, null, 2)),
+  demo: () => loadDemo(),
+  demoHome: async () => { await loadDemo(); go('overview'); },
+  clearDemo: async () => { await clearWhere(o => o.demo); render(); toast('Demo data removed'); },
+  clearAll: (d, el) => arm(el, async () => { await clearWhere(() => true); S.settings = mergeSettings({theme:S.settings.theme}); Store.saveSettings(true); render(); toast('All data deleted'); })
+};
+
+const FORMS = {
+  timer: async fd => {
+    S.settings.timer = {clientId:fd.get('clientId'), task:(fd.get('task')||'').trim(), startedAt:Date.now()};
+    await Store.saveSettings(true); render();
+  },
+  entry: async (fd, f) => {
+    const minutes = parseDur(fd.get('dur'));
+    if (!minutes) { toast('Enter the time as 1:30, 1.5 or 90m.'); f.dur.focus(); return; }
+    const old = UI.editEntry ? S.entries.find(e => e.id === UI.editEntry) : null;
+    const e = {...(old || {id:uid(), createdAt:Date.now()}), date:fd.get('date'), clientId:fd.get('clientId'), task:(fd.get('task')||'').trim(), note:(fd.get('note')||'').trim(), minutes, billable:!!fd.get('billable')};
+    await Store.put('entry', e); UI.editEntry = null; render(); toast(old ? 'Entry updated' : `Added ${hm(minutes)}`);
+  },
+  client: async fd => {
+    const old = UI.editClient && UI.editClient !== 'new' ? client(UI.editClient) : null;
+    const num = k => fd.get(k) === '' || fd.get(k) == null ? 0 : +fd.get(k);
+    const c = {...(old || {id:uid()}), name:fd.get('name').trim(), billing:fd.get('billing'), color:fd.get('color'), rate:num('rate'), fee:num('fee'), included:num('included'), email:(fd.get('email')||'').trim(), address:(fd.get('address')||'').trim(), archived:!!fd.get('archived')};
+    await Store.put('client', c); UI.editClient = null; UI.clientDraft = null; render(); toast(old ? 'Client updated' : `Added ${c.name}`);
+  },
+  expense: async fd => {
+    const old = UI.editExpense ? S.expenses.find(x => x.id === UI.editExpense) : null;
+    const x = {...(old || {id:uid()}), date:fd.get('date'), amount:+fd.get('amount'), category:fd.get('category'), desc:fd.get('desc').trim(), clientId:fd.get('clientId')};
+    await Store.put('expense', x); UI.editExpense = null; UI.ty = tyOf(x.date); render(); toast(old ? 'Expense updated' : 'Expense added');
+  }
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el || el.disabled) return;
+  const fn = ACT[el.dataset.act]; if (fn) { e.preventDefault(); fn(el.dataset, el); }
+});
+document.addEventListener('submit', e => {
+  const f = e.target.closest('form[data-form]'); if (!f) return;
+  e.preventDefault(); FORMS[f.dataset.form](new FormData(f), f);
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.dataset.set) {
+    const path = el.dataset.set.split('.');
+    const val = el.type === 'checkbox' ? el.checked : el.type === 'number' ? (el.value === '' ? 0 : +el.value) : el.value;
+    let o = S.settings; path.slice(0, -1).forEach(k => o = o[k]); o[path.at(-1)] = val;
+    Store.saveSettings(); if (path[0] === 'theme') applyTheme();
+    if (!['name','business','email','address','payment','invPrefix'].includes(path[0])) render();
+    return;
+  }
+  const u = el.dataset.ui;
+  if (u === 'ty') { UI.ty = +el.value; render(); }
+  else if (u === 'billing') {
+    const fd = new FormData(el.form);
+    const base = UI.editClient !== 'new' ? (client(UI.editClient) || {}) : {};
+    UI.clientDraft = {...base, name:fd.get('name'), billing:el.value, color:fd.get('color'), rate:fd.get('rate'), fee:fd.get('fee'), included:fd.get('included'), email:fd.get('email'), address:fd.get('address'), archived:!!fd.get('archived')};
+    render();
+  }
+  else if (u === 'invClient') { UI.inv.clientId = el.value; Object.assign(UI.inv, prefill(UI.inv.clientId, UI.inv.month)); render(); }
+  else if (u === 'invMonth') { UI.inv.month = el.value; Object.assign(UI.inv, prefill(UI.inv.clientId, UI.inv.month)); render(); }
+  else if (u === 'invIssue') { UI.inv.issueDate = el.value || today(); updateTotals(); }
+});
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.dataset.line !== undefined && UI.inv) {
+    const l = UI.inv.lines[+el.dataset.line]; const f = el.dataset.field;
+    l[f] = f === 'desc' ? el.value : (el.value === '' ? 0 : +el.value);
+    const a = document.querySelector(`[data-amt="${el.dataset.line}"]`); if (a) a.textContent = gbp((+l.qty||0)*(+l.unit||0));
+    updateTotals();
+  } else if (el.dataset.ui === 'invNote' && UI.inv) UI.inv.note = el.value;
+});
+function updateTotals(){
+  const sub = invSubtotal(UI.inv.lines), vat = S.settings.vat ? sub * (+S.settings.vatRate||0) / 100 : 0;
+  const t = $('#invTotals'); if (t) t.innerHTML = totalsHtml(sub, vat);
+}
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (ROUTES.includes(h) && h !== UI.view) { UI.view = h; render(); window.scrollTo(0, 0); } });
+let demoSec = 5047;
+setInterval(() => {
+  if (S.settings.timer) document.querySelectorAll('[data-elapsed]').forEach(n => n.textContent = elapsed());
+  const d = document.querySelector('[data-demo]'); if (d) { demoSec++; d.textContent = `${Math.floor(demoSec/3600)}:${pad(Math.floor(demoSec/60)%60)}:${pad(demoSec%60)}`; }
+}, 1000);
+
+(async function boot(){
+  const h = location.hash.slice(1);
+  await Store.init();
+  try { await Store.load(); } catch(e) { console.warn(e); toast('Couldn’t load your saved data.'); }
+  if (ROUTES.includes(h)) UI.view = h; else if (!S.clients.length) UI.view = 'home';
+  applyTheme(); render();
+})();
+</script>
+</body>
+</html>
