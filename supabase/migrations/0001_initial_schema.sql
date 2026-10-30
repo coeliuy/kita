@@ -155,19 +155,49 @@ create index expenses_user_date on public.expenses (user_id, date);
 -- ---------------------------------------------------------------------------
 -- Row-level security: each user sees and changes only their own rows
 -- ---------------------------------------------------------------------------
-do $$
-declare t text;
-begin
-  foreach t in array array['settings', 'year_settings', 'clients', 'invoices', 'time_entries', 'expenses', 'timers'] loop
-    execute format('alter table public.%I enable row level security', t);
-    execute format(
-      'create policy "Users manage their own rows" on public.%I for all to authenticated
-         using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()))', t);
-    -- Signed-out visitors get no access at all
-    execute format('revoke all on public.%I from anon', t);
-    execute format('grant select, insert, update, delete on public.%I to authenticated', t);
-  end loop;
-end $$;
+-- Written out table by table. Signed-out visitors (the anon role) get no access at all.
+
+alter table public.settings enable row level security;
+create policy "Users manage their own rows" on public.settings for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+revoke all on public.settings from anon;
+grant select, insert, update, delete on public.settings to authenticated;
+
+alter table public.year_settings enable row level security;
+create policy "Users manage their own rows" on public.year_settings for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+revoke all on public.year_settings from anon;
+grant select, insert, update, delete on public.year_settings to authenticated;
+
+alter table public.clients enable row level security;
+create policy "Users manage their own rows" on public.clients for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+revoke all on public.clients from anon;
+grant select, insert, update, delete on public.clients to authenticated;
+
+alter table public.invoices enable row level security;
+create policy "Users manage their own rows" on public.invoices for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+revoke all on public.invoices from anon;
+grant select, insert, update, delete on public.invoices to authenticated;
+
+alter table public.time_entries enable row level security;
+create policy "Users manage their own rows" on public.time_entries for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+revoke all on public.time_entries from anon;
+grant select, insert, update, delete on public.time_entries to authenticated;
+
+alter table public.expenses enable row level security;
+create policy "Users manage their own rows" on public.expenses for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+revoke all on public.expenses from anon;
+grant select, insert, update, delete on public.expenses to authenticated;
+
+alter table public.timers enable row level security;
+create policy "Users manage their own rows" on public.timers for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+revoke all on public.timers from anon;
+grant select, insert, update, delete on public.timers to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Invoice numbers: hand out the next number and move the counter on in one
