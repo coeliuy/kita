@@ -12,8 +12,9 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
   /* Dark mode: background #3F4047, text in the light-mode colour #E5EBEA */
-  --bg:#3F4047; --surface:#47484F; --ink:#E5EBEA; --muted:#BCC0C1; --line:#5A5B63; --field:#36373D;
-  --accent:#C44900; --accent-ink:#FFFFFF; --accent-text:#C44900; --heading:#C44900; --num:#C44900; --icon:#C44900; --soft:#544843;
+  --bg:#3F4047; --surface:#47484F; --ink:#FFFFFF; --muted:#BCC0C1; --line:#5A5B63; --field:#36373D;
+  /* Dark mode: headings, numbers and text in white; #C44900 only for icons and buttons */
+  --accent:#C44900; --accent-ink:#FFFFFF; --accent-text:#FFFFFF; --heading:#FFFFFF; --num:#FFFFFF; --icon:#C44900; --soft:#544843;
   --pop:#1B998B; --pop-text:#A3D7D1; --pop-soft:#3D5A5D; --focus:#A3D7D1;
   --warn:#E8C547; --warn-soft:#5A5A52; --bad:#FFAFA7; --bad-soft:#5F4448; --stop:#B42318;
     color-scheme:dark;
@@ -21,8 +22,9 @@
 }
 :root[data-theme="dark"]{
   /* Dark mode: background #3F4047, text in the light-mode colour #E5EBEA */
-  --bg:#3F4047; --surface:#47484F; --ink:#E5EBEA; --muted:#BCC0C1; --line:#5A5B63; --field:#36373D;
-  --accent:#C44900; --accent-ink:#FFFFFF; --accent-text:#C44900; --heading:#C44900; --num:#C44900; --icon:#C44900; --soft:#544843;
+  --bg:#3F4047; --surface:#47484F; --ink:#FFFFFF; --muted:#BCC0C1; --line:#5A5B63; --field:#36373D;
+  /* Dark mode: headings, numbers and text in white; #C44900 only for icons and buttons */
+  --accent:#C44900; --accent-ink:#FFFFFF; --accent-text:#FFFFFF; --heading:#FFFFFF; --num:#FFFFFF; --icon:#C44900; --soft:#544843;
   --pop:#1B998B; --pop-text:#A3D7D1; --pop-soft:#3D5A5D; --focus:#A3D7D1;
   --warn:#E8C547; --warn-soft:#5A5A52; --bad:#FFAFA7; --bad-soft:#5F4448; --stop:#B42318;
   color-scheme:dark;
