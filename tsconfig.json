@@ -15,7 +15,8 @@
     "skipLibCheck": true,
     "types": [
       "vitest/globals",
-      "vite/client"
+      "vite/client",
+      "node"
     ],
     "jsx": "react-jsx"
   },
