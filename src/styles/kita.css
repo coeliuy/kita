@@ -1,30 +1,30 @@
 /* Kita styles, carried over from the prototype. Colours are defined once as tokens on :root, with dark-mode values below. */
 :root{
-  --bg:#E5EBEA; --surface:#FFFFFF; --ink:#1E2228; --muted:#59606B; --line:#CBD4D2; --field:#FFFFFF;
-  /* Primary #C44900: fills (buttons, bars, active items), headings, and anything that was orange.
-     --accent-text is the same colour a shade darker, so small text stays readable on the grey-green background. */
-  --accent:#C44900; --accent-ink:#FFFFFF; --accent-text:#B64400; --heading:#C44900; --soft:#F8E9E0;
+  /* Light mode: background #E5EBEA, text in the dark-mode colour #3F4047 */
+  --bg:#E5EBEA; --surface:#F3F6F6; --ink:#3F4047; --muted:#63666C; --line:#CDD5D3; --field:#FFFFFF;
+  /* Primary #C44900: headings, numbers, icons, buttons, bars and active items */
+  --accent:#C44900; --accent-ink:#FFFFFF; --accent-text:#C44900; --heading:#C44900; --num:#C44900; --icon:#C44900; --soft:#F6E3D8;
   /* Accent #1B998B: secondary buttons and small pops of colour. --pop-text is a darker shade for small text. */
-  --pop:#1B998B; --pop-text:#15766B; --pop-soft:#DFF1EF; --focus:#15766B;
+  --pop:#1B998B; --pop-text:#15766B; --pop-soft:#DCEFEC; --focus:#15766B;
   --warn:#806300; --warn-soft:#FAF1CC; --bad:#B42318; --bad-soft:#FBE4E1; --stop:#B42318;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-  --bg:#40434E; --surface:#4A4E5A; --ink:#F1F3F3; --muted:#C5CAD0; --line:#5E6270; --field:#3B3E48;
-  /* #C44900 is too dark to read as text on this background, so text and headings use lighter shades of it. */
-  --accent:#C44900; --accent-ink:#FFFFFF; --accent-text:#E7B699; --heading:#DC9264; --soft:#5D4D4C;
-  --pop:#1B998B; --pop-text:#A3D7D1; --pop-soft:#405A62; --focus:#A3D7D1;
-  --warn:#E8C547; --warn-soft:#5C5B55; --bad:#FFAFA7; --bad-soft:#64434A; --stop:#B42318;
+  /* Dark mode: background #3F4047, text in the light-mode colour #E5EBEA */
+  --bg:#3F4047; --surface:#47484F; --ink:#E5EBEA; --muted:#BCC0C1; --line:#5A5B63; --field:#36373D;
+  --accent:#C44900; --accent-ink:#FFFFFF; --accent-text:#C44900; --heading:#C44900; --num:#C44900; --icon:#C44900; --soft:#544843;
+  --pop:#1B998B; --pop-text:#A3D7D1; --pop-soft:#3D5A5D; --focus:#A3D7D1;
+  --warn:#E8C547; --warn-soft:#5A5A52; --bad:#FFAFA7; --bad-soft:#5F4448; --stop:#B42318;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#40434E; --surface:#4A4E5A; --ink:#F1F3F3; --muted:#C5CAD0; --line:#5E6270; --field:#3B3E48;
-  /* #C44900 is too dark to read as text on this background, so text and headings use lighter shades of it. */
-  --accent:#C44900; --accent-ink:#FFFFFF; --accent-text:#E7B699; --heading:#DC9264; --soft:#5D4D4C;
-  --pop:#1B998B; --pop-text:#A3D7D1; --pop-soft:#405A62; --focus:#A3D7D1;
-  --warn:#E8C547; --warn-soft:#5C5B55; --bad:#FFAFA7; --bad-soft:#64434A; --stop:#B42318;
+  /* Dark mode: background #3F4047, text in the light-mode colour #E5EBEA */
+  --bg:#3F4047; --surface:#47484F; --ink:#E5EBEA; --muted:#BCC0C1; --line:#5A5B63; --field:#36373D;
+  --accent:#C44900; --accent-ink:#FFFFFF; --accent-text:#C44900; --heading:#C44900; --num:#C44900; --icon:#C44900; --soft:#544843;
+  --pop:#1B998B; --pop-text:#A3D7D1; --pop-soft:#3D5A5D; --focus:#A3D7D1;
+  --warn:#E8C547; --warn-soft:#5A5A52; --bad:#FFAFA7; --bad-soft:#5F4448; --stop:#B42318;
   color-scheme:dark;
 }
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -364,3 +364,8 @@ body.sheet-open #fab{display:none!important}
 #themeToggle .icon-sun{display:none}
 .shown-dark #themeToggle .icon-sun{display:block}
 .shown-dark #themeToggle .icon-moon{display:none}
+
+/* Numbers and icons in the primary colour */
+.fig .v,.clock:not(.idle),.dur,.cl .num,.kv>span:last-child,.kv>b,td.r,.day-h>span:last-child,.pill b,.ring-t{color:var(--num)}
+.ring-t{fill:var(--num)}
+#nav svg.i,#tabbar svg.i,.menu-item svg,.ibtn svg,.btn.link svg,.theme-toggle svg{color:var(--icon)}
