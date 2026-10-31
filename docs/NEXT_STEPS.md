@@ -11,8 +11,9 @@ Must do:
    Supabase team, a few per hour, so friends won't get their confirmation emails. Set up a free
    Resend account, verify a domain you own, and enter its SMTP details in
    **Supabase -> Authentication -> Emails -> SMTP settings**.
-2. **Privacy notice: drafted at /privacy (privacy.html).** You fill in the [bracketed] details:
-   your name or business name, a contact email, the date, and your email provider.
+2. **Privacy notice: live at /privacy (privacy.html).** Run by Kita App, contact
+   coeli@dahildigital.com. Name the email provider once it's set up, and have it checked
+   before a public launch.
 3. **Delete my account: built** (Settings -> Your account). Needs migration 0003.
 4. **Send feedback: built** (sidebar, More, and the box saves to the `feedback` table, which you
    read in Supabase -> Table Editor -> feedback). Needs migration 0003.
