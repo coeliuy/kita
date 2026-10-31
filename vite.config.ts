@@ -19,7 +19,7 @@ export default defineConfig({
   plugins: [react(), appFallback()],
   build: {
     rollupOptions: {
-      input: { home: `${root}index.html`, app: `${root}app.html` },
+      input: { home: `${root}index.html`, app: `${root}app.html`, privacy: `${root}privacy.html` },
     },
   },
 });

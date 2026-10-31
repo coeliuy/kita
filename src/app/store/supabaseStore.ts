@@ -97,6 +97,17 @@ export class SupabaseStore implements KitaStore {
     }
   }
 
+  async sendFeedback(message: string, page: string) {
+    const { data } = await this.sb.auth.getUser();
+    check(await this.sb.from('feedback').insert({ message: message.slice(0, 5000), page: page.slice(0, 200), email: data.user?.email ?? '' }));
+  }
+
+  async deleteAccount() {
+    check(await this.sb.rpc('delete_my_account'));
+    try { sessionStorage.setItem('kita-deleted', '1'); } catch { /* only used for a message */ }
+    await this.sb.auth.signOut();
+  }
+
   async takeInvoiceNumber() {
     const number = check(await this.sb.rpc('take_invoice_number')) as string;
     this.knownNextInv++;

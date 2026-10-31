@@ -16,4 +16,8 @@ export interface KitaStore {
   saveTimer(timer: Timer | null): Promise<void>;
   /** Hand out the next invoice number and move the counter on, in one step. */
   takeInvoiceNumber(): Promise<string>;
+  /** Send a feedback message to the people running Kita. */
+  sendFeedback(message: string, page: string): Promise<void>;
+  /** Permanently delete this account and everything in it. */
+  deleteAccount(): Promise<void>;
 }

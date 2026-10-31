@@ -27,6 +27,34 @@ function Text({ k, label, type = 'text', area }: { k: keyof SettingsT; label: st
   );
 }
 
+/** Permanently delete the account, after a clear warning. */
+function DeleteAccount() {
+  const { data, deleteAccount } = useKita();
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!asking) {
+    return (
+      <p className="fine" style={{ marginTop: 14 }}>
+        <button className="btn link danger" style={{ padding: 0 }} onClick={() => setAsking(true)}>Delete my account</button>
+        {' '}· <a href="/privacy">How Kita handles your data</a>
+      </p>
+    );
+  }
+  return (
+    <div className="callout" style={{ marginTop: 14, borderColor: 'var(--bad)', background: 'var(--bad-soft)' }}>
+      <p><b>Delete your account and everything in it?</b> Your clients, time, tasks, invoices, expenses and settings will be
+        deleted straight away and can’t be recovered.</p>
+      <div className="row" style={{ marginTop: 10, alignItems: 'center' }}>
+        <button className="btn" onClick={() => download('kita-backup.json', JSON.stringify(data, null, 2), 'application/json')}>Download everything first</button>
+        <button className="btn link" onClick={() => setAsking(false)}>Cancel</button>
+        <button className="btn stop" disabled={busy} onClick={async () => { setBusy(true); await deleteAccount(); setBusy(false); }}>
+          {busy ? 'Deleting…' : 'Yes, delete my account'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Categories() {
   const { data, saveCategory, deleteCategory, addSuggestedCategories, toast } = useKita();
   const [name, setName] = useState('');
@@ -107,6 +135,7 @@ export function Settings() {
             <p>Signed in as <b>{account.email}</b></p>
             <button className="btn" onClick={account.signOut}>Sign out</button>
           </div>
+          <DeleteAccount />
         </section>
       )}
       <section>

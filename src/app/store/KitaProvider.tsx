@@ -13,7 +13,7 @@ import type { ImportResult } from '../lib/importBackup';
 import { clientById, yearSettings, yearSummary } from '../lib/selectors';
 import type { Account } from '../auth/AuthGate';
 import type { KitaStore } from './store';
-import { DEFAULT_SETTINGS, DEFAULT_YEAR, type Category, type Task, type Client, type Collection, type Expense, type Invoice, type KitaData, type Settings, type TimeEntry, type YearSettings } from './types';
+import { DEFAULT_SETTINGS, DEFAULT_YEAR, emptyData, type Category, type Task, type Client, type Collection, type Expense, type Invoice, type KitaData, type Settings, type TimeEntry, type YearSettings } from './types';
 
 export interface ToastAction {
   label: string;
@@ -73,6 +73,9 @@ interface KitaContext {
   loadDemo: () => Promise<void>;
   clearData: (onlyDemo: boolean) => Promise<void>;
   importData: (r: ImportResult) => Promise<void>;
+  /** Returns true if the message was sent. */
+  sendFeedback: (message: string) => Promise<boolean>;
+  deleteAccount: () => Promise<void>;
 }
 
 const Ctx = createContext<KitaContext | null>(null);
@@ -426,6 +429,25 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
         await upsert('invoices', invoices);
         await upsert('entries', demo.entries);
         await upsert('expenses', demo.expenses);
+      },
+
+      sendFeedback: async (message: string) => {
+        try {
+          await store.sendFeedback(message.trim(), location.pathname);
+          return true;
+        } catch (e) {
+          console.warn(e);
+          return false;
+        }
+      },
+
+      deleteAccount: async () => {
+        try {
+          await store.deleteAccount();
+          if (store.kind === 'local') commit(emptyData());
+        } catch (e) {
+          failed(e);
+        }
       },
 
       importData: async (r: ImportResult) => {

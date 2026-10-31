@@ -25,7 +25,14 @@ export function AuthScreen({ sb, initialMode = 'signin', onPasswordSet }: { sb: 
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  // Shown once after someone deletes their account.
+  const [notice, setNotice] = useState(() => {
+    try {
+      if (!sessionStorage.getItem('kita-deleted')) return '';
+      sessionStorage.removeItem('kita-deleted');
+      return 'Your account and everything in it have been deleted.';
+    } catch { return ''; }
+  });
 
   const switchTo = (m: AuthMode) => { setMode(m); setError(''); setNotice(''); };
 
@@ -77,7 +84,7 @@ export function AuthScreen({ sb, initialMode = 'signin', onPasswordSet }: { sb: 
       <a className="brand" href="/"><Logo />Kita</a>
       <section className="auth-card">
         <h1>{title}</h1>
-        {mode === 'signup' && <p className="sub">Free during early preview. Your data is private to your account.</p>}
+        {mode === 'signup' && <p className="sub">Free during early preview. Your data is private to your account. <a href="/privacy">How Kita handles your data</a></p>}
         {GOOGLE_SIGN_IN && (mode === 'signin' || mode === 'signup') && (
           <>
             <button type="button" className="btn lg auth-google" onClick={google}>Continue with Google</button>

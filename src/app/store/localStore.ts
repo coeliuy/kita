@@ -75,6 +75,15 @@ export class LocalStore implements KitaStore {
     this.persist();
   }
 
+  async sendFeedback(): Promise<void> {
+    throw new Error('Feedback needs an account.');
+  }
+
+  async deleteAccount() {
+    this.data = emptyData();
+    localStorage.removeItem(KEY);
+  }
+
   async takeInvoiceNumber() {
     const s = this.data.settings;
     const n = Math.max(1, Math.floor(+s.nextInv || 1));

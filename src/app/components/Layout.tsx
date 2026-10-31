@@ -7,6 +7,7 @@ import { useRouter, type View } from '../router';
 import { useKita } from '../store/KitaProvider';
 import { rememberTheme, shownTheme, storedTheme } from '../lib/theme';
 import { AskDoneSheet } from './AskDoneSheet';
+import { FeedbackDialog, openFeedback } from './Feedback';
 import { requestIntent } from './intents';
 import { QuickStart } from './QuickStart';
 import { Icon, useNow } from './ui';
@@ -111,6 +112,7 @@ export function Layout({ children }: { children: ReactNode }) {
           ))}
           <div className="spacer" />
           <a href="/" className="navlink"><Icon name="home" /><span>About Kita</span></a>
+          <button onClick={openFeedback}><Icon name="feedback" /><span>Send feedback</span></button>
         </nav>
         <main id="view"><div className="view">{children}</div></main>
       </div>
@@ -123,6 +125,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {t ? <><Icon name="stop" /><span>{clockText(now - t.startedAt)}</span></> : <Icon name="play" />}
       </button>
       <AskDoneSheet />
+      <FeedbackDialog />
       {quick && <QuickStart onClose={() => setQuick(false)} />}
     </>
   );

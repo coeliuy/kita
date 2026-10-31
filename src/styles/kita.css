@@ -373,3 +373,10 @@ body.sheet-open #fab{display:none!important}
 #nav svg.i,#tabbar svg.i,.menu-item svg,.ibtn svg,.btn.link svg,.theme-toggle svg{color:var(--icon)}
 /* Section headings (H2) and hero numbers stay in the primary colour in both modes */
 h2,.fig.hero .v,.stat .n{color:var(--accent)}
+/* Privacy and other plain text pages */
+.legal{max-width:760px;padding-bottom:40px}
+.legal h1{font-size:clamp(32px,5vw,48px);margin:24px 0 12px}
+.legal h2{font-size:20px;margin:32px 0 8px}
+.legal p,.legal li{line-height:1.65;max-width:68ch}
+.legal ul{padding-left:20px;margin:8px 0}
+.legal li+li{margin-top:6px}

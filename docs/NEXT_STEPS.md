@@ -11,11 +11,11 @@ Must do:
    Supabase team, a few per hour, so friends won't get their confirmation emails. Set up a free
    Resend account, verify a domain you own, and enter its SMTP details in
    **Supabase -> Authentication -> Emails -> SMTP settings**.
-2. **Privacy notice (Claude drafts, you check).** A short page saying what's stored, where
-   (Supabase, London), who can see it, and how to delete it; linked from sign-up and the footer.
-3. **Delete my account (Claude builds).** "Delete all my data" clears data but leaves the login.
-   Add a proper account deletion.
-4. **Feedback link (Claude builds).** A "Send feedback" link in the app (email or a form).
+2. **Privacy notice: drafted at /privacy (privacy.html).** You fill in the [bracketed] details:
+   your name or business name, a contact email, the date, and your email provider.
+3. **Delete my account: built** (Settings -> Your account). Needs migration 0003.
+4. **Send feedback: built** (sidebar, More, and the box saves to the `feedback` table, which you
+   read in Supabase -> Table Editor -> feedback). Needs migration 0003.
 5. **Check the homepage stats sources (you)** before sharing the link widely.
 
 Strongly recommended:

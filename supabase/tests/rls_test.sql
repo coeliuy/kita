@@ -119,6 +119,39 @@ exception when insufficient_privilege then raise notice 'ok: signed-out visitors
 end $$;
 reset role;
 
+-- Feedback: people can send it but not read it
+set role authenticated;
+select pg_temp.act_as('22222222-2222-2222-2222-222222222222');
+insert into public.feedback (message, email) values ('Love it', 'bob@example.com');
+do $$ begin
+  perform count(*) from public.feedback;
+  raise exception 'FAILED: a user could read feedback';
+exception when insufficient_privilege then raise notice 'ok: users can send feedback but not read it';
+end $$;
+do $$ begin
+  insert into public.feedback (user_id, message) values ('11111111-1111-1111-1111-111111111111', 'pretending to be Alice');
+  raise exception 'FAILED: Bob sent feedback as Alice';
+exception when insufficient_privilege then raise notice 'ok: feedback can''t be sent in someone else''s name';
+end $$;
+
+-- Delete my account: only the caller's account and data go
+select pg_temp.act_as('11111111-1111-1111-1111-111111111111');
+insert into public.clients (name, billing) values ('Alice again', 'hourly');
+select public.delete_my_account();
+reset role;
+select pg_temp.check(not exists (select 1 from auth.users where id = '11111111-1111-1111-1111-111111111111'), 'deleting an account removes the login');
+select pg_temp.check(not exists (select 1 from public.clients where user_id = '11111111-1111-1111-1111-111111111111'), 'and all of that person''s data');
+select pg_temp.check(not exists (select 1 from public.settings where user_id = '11111111-1111-1111-1111-111111111111'), 'including their settings');
+select pg_temp.check(exists (select 1 from auth.users where id = '22222222-2222-2222-2222-222222222222'), 'other accounts are untouched');
+select pg_temp.check((select count(*) from public.feedback) = 1, 'feedback is kept');
+set role anon;
+do $$ begin
+  perform public.delete_my_account();
+  raise exception 'FAILED: signed-out visitor called delete_my_account';
+exception when insufficient_privilege then raise notice 'ok: signed-out visitors can''t delete accounts';
+end $$;
+reset role;
+
 -- Every table in the public schema has RLS switched on
 select pg_temp.check(
   not exists (select 1 from pg_tables where schemaname = 'public' and not rowsecurity),

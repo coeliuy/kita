@@ -1,3 +1,4 @@
+import { openFeedback } from '../components/Feedback';
 import { Icon } from '../components/ui';
 import { useRouter, type View } from '../router';
 
@@ -17,7 +18,9 @@ export function More() {
         {ITEMS.map(([k, label, desc]) => (
           <button key={k} className="menu-item" onClick={() => go(k)}><Icon name={k} /><span><b>{label}</b><small>{desc}</small></span></button>
         ))}
+        <button className="menu-item" onClick={openFeedback}><Icon name="feedback" /><span><b>Send feedback</b><small>Tell us what’s working and what isn’t</small></span></button>
         <a className="menu-item" href="/"><Icon name="home" /><span><b>About Kita</b><small>What Kita does and how to use it</small></span></a>
+        <a className="menu-item" href="/privacy"><Icon name="settings" /><span><b>Privacy</b><small>What Kita stores and how to delete it</small></span></a>
       </section>
     </>
   );
