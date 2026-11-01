@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { CURRENCIES, currencySymbol, ratesForTaxYear, taxYearLabel, taxYearOf, type PaymentTerms } from '../../lib/money';
-import { ImportInvoices } from '../components/ImportInvoices';
+import { PastIncome } from '../components/PastIncome';
 import { ConfirmButton, NumberField, TaxYearSelect } from '../components/ui';
 import { download, entriesCsv } from '../lib/files';
 import { fmtDate, today, uid } from '../lib/format';
@@ -284,8 +284,8 @@ export function Settings() {
           <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={e => onImport(e.target.files?.[0])} />
           <p className="fine">Bring in a “Download everything” file, including one from the earlier single-page version of Kita. It adds to what’s here and doesn’t replace anything.</p>
         </div>
-        <div style={{ marginTop: 16 }}><ImportInvoices compact /></div>
-        <p className="fine" style={{ marginTop: 6 }}>Past invoices or earnings from a spreadsheet saved as CSV: you’ll see what Kita found before anything is added.</p>
+        <h3 style={{ margin: '22px 0 10px' }}>Earnings before Kita</h3>
+        <PastIncome />
         <div className="row" style={{ marginTop: 16 }}>
           {data.clients.some(c => c.demo)
             ? <button className="btn" onClick={async () => { await clearData(true); toast('Demo data removed'); }}>Remove demo data</button>

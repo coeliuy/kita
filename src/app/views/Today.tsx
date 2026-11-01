@@ -26,7 +26,7 @@ function SetupChecklist() {
     ['Add a task', data.tasks.length > 0, 'track'],
     ['Track your first hour', sumMinutes(data.entries) >= 60, 'track'],
     ['Add your details for invoices', !!(s.name || s.business), 'settings'],
-    ['Create or import invoices', data.invoices.length > 0, 'invoices'],
+    ['Add earnings so far, or your first invoice', data.invoices.length > 0, 'invoices'],
   ];
   const done = steps.filter(x => x[1]).length;
   if (done === steps.length) return null;

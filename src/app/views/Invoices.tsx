@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { blankLine, CURRENCIES, currencySymbol, dueDate, inHome, invoiceTotals, isForeign, isOverdue, lineAmount, monthLabel, shiftMonth, sumPounds } from '../../lib/money';
 import { RowMenu } from '../components/RowMenu';
 import { ClientOptions, plural } from '../components/ui';
-import { ImportInvoices } from '../components/ImportInvoices';
+import { PastIncome } from '../components/PastIncome';
 import { download, invoiceFileName, invoicePdf } from '../lib/files';
 import { fmtDate, homeCurrencyCode, homeSymbol, money, money0, padInvoiceNumber, thisMonth, today } from '../lib/format';
 import { homeCurrency, region } from '../lib/region';
@@ -181,6 +181,36 @@ export function Invoices() {
   const total = (list: Invoice[]) => sumPounds(list.map(i => inHome(i, 'total')));
   const monthName = (m: string) => monthLabel(m).split(' ')[0];
   const rows = [...data.invoices].sort((a, b) => b.issueDate.localeCompare(a.issueDate) || b.number.localeCompare(a.number));
+  // Earnings typed in from before Kita are kept out of the way of real invoices.
+  const isPast = (i: Invoice) => i.number.startsWith('Past earnings');
+  const invoiceRows = rows.filter(i => !isPast(i)), pastRows = rows.filter(isPast);
+  const table = (list: Invoice[]) => (
+            <table>
+                <thead><tr><th>Number</th><th>Client</th><th>Issued</th><th className="r">Total</th><th>Status</th><th /></tr></thead>
+                <tbody>
+                  {list.map(i => (
+                    <tr key={i.id}>
+                      <td>{i.number}</td>
+                      <td>{clientById(data, i.clientId)?.name ?? i.clientName}</td>
+                      <td>{fmtDate(i.issueDate)}</td>
+                      <td className="r">{money(i.total, i.currency || undefined)}</td>
+                      <td>{i.status === 'paid' ? <span className="tag good">Paid {fmtDate(i.paidDate)}</span> : isOverdue(i, t) ? <span className="tag bad">Overdue</span> : <span className="tag">Due {fmtDate(i.dueDate)}</span>}</td>
+                      <td className="r" style={{ whiteSpace: 'nowrap' }}>
+                        <PaidControl inv={i} />{' '}
+                        <RowMenu label={`More actions for ${i.number}`} items={[
+                          !i.number.startsWith('Past earnings') && { label: 'Download PDF', run: async () => {
+                            try { download(invoiceFileName(i, data.settings.business || data.settings.name), await invoicePdf(i, region(data).salesTax)); }
+                            catch { toast('The PDF couldn’t be made. Check your connection and try again.'); }
+                          } },
+                          i.status === 'paid' && { label: 'Mark unpaid', run: () => markUnpaid(i.id) },
+                          { label: 'Delete', danger: true, run: () => deleteInvoice(i.id) },
+                        ]} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+  );
 
   return (
     <>
@@ -196,39 +226,18 @@ export function Invoices() {
           <div className="fig"><div className="v">{money0(total(unpaid.filter(i => i.dueDate.slice(0, 7) <= thisM)))}</div><div className="l">Due by the end of {monthName(thisM)}</div></div>
           <div className="fig"><div className="v">{money0(total(unpaid.filter(i => i.dueDate.slice(0, 7) === nextM)))}</div><div className="l">Due in {monthName(nextM)}</div></div>
         </div>
-        {rows.length ? (
-          <div className="tw">
-            <table>
-              <thead><tr><th>Number</th><th>Client</th><th>Issued</th><th className="r">Total</th><th>Status</th><th /></tr></thead>
-              <tbody>
-                {rows.map(i => (
-                  <tr key={i.id}>
-                    <td>{i.number}</td>
-                    <td>{clientById(data, i.clientId)?.name ?? i.clientName}</td>
-                    <td>{fmtDate(i.issueDate)}</td>
-                    <td className="r">{money(i.total, i.currency || undefined)}</td>
-                    <td>{i.status === 'paid' ? <span className="tag good">Paid {fmtDate(i.paidDate)}</span> : isOverdue(i, t) ? <span className="tag bad">Overdue</span> : <span className="tag">Due {fmtDate(i.dueDate)}</span>}</td>
-                    <td className="r" style={{ whiteSpace: 'nowrap' }}>
-                      <PaidControl inv={i} />{' '}
-                      <RowMenu label={`More actions for ${i.number}`} items={[
-                        { label: 'Download PDF', run: async () => {
-                          try { download(invoiceFileName(i, data.settings.business || data.settings.name), await invoicePdf(i, region(data).salesTax)); }
-                          catch { toast('The PDF couldn’t be made. Check your connection and try again.'); }
-                        } },
-                        i.status === 'paid' && { label: 'Mark unpaid', run: () => markUnpaid(i.id) },
-                        { label: 'Delete', danger: true, run: () => deleteInvoice(i.id) },
-                      ]} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : <div className="empty">No invoices yet. Kita fills them in from your tracked time.</div>}
+        {invoiceRows.length ? <div className="tw">{table(invoiceRows)}</div>
+          : <div className="empty">No invoices yet. Kita fills them in from your tracked time.</div>}
+        {pastRows.length > 0 && (
+          <details className="past-list" style={{ marginTop: 16 }}>
+            <summary>Earnings added before Kita: {pastRows.length} {plural(pastRows.length, 'record')}, {money0(total(pastRows))}</summary>
+            <div className="tw" style={{ marginTop: 10 }}>{table(pastRows)}</div>
+          </details>
+        )}
       </section>
       <section>
-        <div className="head"><h2>Bring in past invoices</h2></div>
-        <ImportInvoices />
+        <div className="head"><h2>Earnings before Kita</h2></div>
+        <PastIncome />
       </section>
     </>
   );
