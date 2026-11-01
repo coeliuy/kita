@@ -8,7 +8,7 @@ describe('database row conversion', () => {
   it('keeps clients intact', () => {
     const c: Client = {
       id: 'c1', name: 'Northlight', billing: 'retainer', rate: 50, fee: 1200, included: 25, startDate: '2026-07-01',
-      endDate: null, archived: false, color: '#1F6F5C', weekly: 6, email: 'a@b.c', address: '1 Road', createdAt, demo: true,
+      endDate: null, archived: false, color: '#1F6F5C', weekly: 6, currency: 'USD', email: 'a@b.c', address: '1 Road', createdAt, demo: true,
     };
     expect(TABLES.clients.fromRow(TABLES.clients.toRow(c))).toEqual(c);
   });
@@ -24,7 +24,7 @@ describe('database row conversion', () => {
       period: '2026-10', issueDate: '2026-10-31', dueDate: '2026-11-30',
       lines: [{ desc: 'Retainer', qty: 1, unit: 1200, kind: 'retainer_fee' }],
       subtotal: 1200, vatRate: 20, vat: 240, total: 1440, status: 'paid', paidDate: '2026-11-10', note: 'Thanks',
-      entryIds: ['e1'], createdAt, demo: false,
+      entryIds: ['e1'], createdAt, demo: false, currency: 'USD', fxRate: 0.79, receivedHome: 1100,
       from: { name: 'Me', business: 'Biz', address: 'Addr', email: 'me@x.y', payment: 'Bank', vatNumber: 'GB123' },
     };
     expect(TABLES.invoices.fromRow(TABLES.invoices.toRow(i))).toEqual(i);
@@ -43,7 +43,7 @@ describe('database row conversion', () => {
   });
 
   it('keeps settings, year settings and the timer intact', () => {
-    const s = { ...DEFAULT_SETTINGS, name: 'Me', vatRegistered: true, vatNumber: 'GB1', terms: 'eofm' as const, theme: 'dark' as const, capacity: 30, invNotes: false, hideSetup: true };
+    const s = { ...DEFAULT_SETTINGS, name: 'Me', vatRegistered: true, vatNumber: 'GB1', terms: 'eofm' as const, theme: 'dark' as const, capacity: 30, invNotes: false, hideSetup: true, country: 'PH' as const, currency: 'PHP', setAside: 15, fxRates: { USD: { rate: 56.1, date: '2026-11-01' } } };
     expect({ ...DEFAULT_SETTINGS, ...settingsFromRow(settingsToRow(s)) }).toEqual(s);
     const y = { otherIncome: 30000, goal: 40000, goalType: 'net' as const, taxSaved: 500, rateOverrides: { basicRate: 21 } };
     expect(yearFromRow(yearToRow(2026, y))).toEqual(y);

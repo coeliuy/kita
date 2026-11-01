@@ -5,9 +5,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cleanLines, dueDate, invoiceTotals, type InvoiceLine, type ISODate, type MonthKey } from '../../lib/money';
 import { buildDemoData } from '../lib/demo';
-import { formatHM, taxYearLabel, taxYearOf } from '../../lib/money';
+import { formatHM, inHome, isForeign, taxYearLabel, taxYearOf } from '../../lib/money';
+import { yearSystem } from '../lib/region';
 import { burst, milestoneCrossed } from '../lib/celebrate';
-import { fmtDate, gbp0, today, uid, ymd } from '../lib/format';
+import { fmtDate, money0, today, uid, ymd } from '../lib/format';
 import { nextDue, SUGGESTED_CATEGORIES } from '../lib/tasks';
 import type { ImportResult } from '../lib/importBackup';
 import { clientById, yearSettings, yearSummary } from '../lib/selectors';
@@ -27,6 +28,10 @@ export interface NewInvoice {
   lines: InvoiceLine[];
   note: string;
   entryIds: string[];
+  /** '' = home currency. */
+  currency: string;
+  /** Home currency per 1 unit of `currency`, for invoices in another currency. */
+  fxRate: number | null;
 }
 
 interface KitaContext {
@@ -63,7 +68,8 @@ interface KitaContext {
   completeTask: (id: string) => Promise<void>;
   reopenTask: (id: string) => Promise<void>;
   createInvoice: (draft: NewInvoice) => Promise<Invoice | null>;
-  markPaid: (id: string, paidDate: ISODate) => Promise<void>;
+  /** For a foreign-currency invoice, `receivedHome` is what arrived in your currency. */
+  markPaid: (id: string, paidDate: ISODate, receivedHome?: number | null) => Promise<void>;
   markUnpaid: (id: string) => Promise<void>;
   deleteInvoice: (id: string) => Promise<void>;
   saveExpense: (x: Expense) => Promise<void>;
@@ -84,6 +90,14 @@ export function useKita(): KitaContext {
   const v = useContext(Ctx);
   if (!v) throw new Error('useKita must be used inside <KitaProvider>');
   return v;
+}
+
+/** An invoice's currency fields: none for the home currency, otherwise the code and exchange rate. */
+function invoiceCurrency(draft: NewInvoice, home: string) {
+  const foreign = !!draft.currency && draft.currency !== home && !!draft.fxRate && draft.fxRate > 0;
+  return foreign
+    ? { currency: draft.currency, fxRate: draft.fxRate, receivedHome: null }
+    : { currency: '', fxRate: null, receivedHome: null };
 }
 
 export function KitaProvider({ store, account = null, children }: { store: KitaStore; account?: Account | null; children: ReactNode }) {
@@ -351,6 +365,7 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
           clientEmail: client.email, period: draft.period, issueDate: draft.issueDate,
           dueDate: dueDate(draft.issueDate, s.terms), lines, vatRate, ...totals, status: 'unpaid', paidDate: null,
           note: draft.note.trim(), entryIds: draft.entryIds, createdAt: Date.now(),
+          ...invoiceCurrency(draft, s.currency),
           from: { name: s.name, business: s.business, address: s.address, email: s.email, payment: s.payment, vatNumber: s.vatRegistered ? s.vatNumber : '' },
         };
         commit({ ...cur(), settings: { ...cur().settings, nextInv: (+s.nextInv || 1) + 1 } });
@@ -360,23 +375,25 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
         return invoice;
       },
 
-      markPaid: async (id: string, paidDate: ISODate) => {
+      markPaid: async (id: string, paidDate: ISODate, receivedHome: number | null = null) => {
         const i = cur().invoices.find(x => x.id === id);
         if (!i) return;
-        const ty = taxYearOf(paidDate);
+        const ty = taxYearOf(paidDate, yearSystem(cur()));
         const goalShare = () => yearSummary(cur(), ty, today()).goal?.share ?? 0;
         const before = goalShare();
-        await upsert('invoices', [{ ...i, status: 'paid', paidDate }]);
+        const paid: Invoice = { ...i, status: 'paid', paidDate, receivedHome: isForeign(i) ? receivedHome : null };
+        await upsert('invoices', [paid]);
+        const landed = money0(inHome(paid, 'total'));
         const y = yearSummary(cur(), ty, today());
         const hit = milestoneCrossed(before, goalShare());
         burst(hit ? 48 : 36);
-        if (hit === 1) toast(`${gbp0(i.total)} landed. You’ve reached your ${taxYearLabel(ty)} goal! Brilliant work.`);
-        else if (hit) toast(`${gbp0(i.total)} landed. ${hit === 0.5 ? 'Halfway' : hit === 0.25 ? 'A quarter of the way' : 'Three quarters of the way'} to your goal. Keep going!`);
-        else toast(`${gbp0(i.total)} landed. You’ve been paid ${gbp0(y.figures.income)}${cur().settings.vatRegistered ? ' (before VAT)' : ''} this tax year.`);
+        if (hit === 1) toast(`${landed} landed. You’ve reached your ${taxYearLabel(ty, yearSystem(cur()))} goal! Brilliant work.`);
+        else if (hit) toast(`${landed} landed. ${hit === 0.5 ? 'Halfway' : hit === 0.25 ? 'A quarter of the way' : 'Three quarters of the way'} to your goal. Keep going!`);
+        else toast(`${landed} landed. You’ve been paid ${money0(y.figures.income)}${cur().settings.vatRegistered ? ' (before VAT)' : ''} this tax year.`);
       },
       markUnpaid: async (id: string) => {
         const i = cur().invoices.find(x => x.id === id);
-        if (i) await upsert('invoices', [{ ...i, status: 'unpaid', paidDate: null }]);
+        if (i) await upsert('invoices', [{ ...i, status: 'unpaid', paidDate: null, receivedHome: null }]);
       },
       deleteInvoice: async (id: string) => {
         const invoice = cur().invoices.find(x => x.id === id);

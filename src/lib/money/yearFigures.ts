@@ -7,9 +7,10 @@
  *
  * Income is invoice subtotals, excluding VAT: VAT collected belongs to HMRC.
  */
-import { daysElapsedInTaxYear, inRange, mtdQuarters, taxYearProgress, taxYearRange } from './dates';
+import { daysElapsedInTaxYear, inRange, mtdQuarters, taxYearProgress, taxYearRange, type YearSystem } from './dates';
 import { sumPounds } from './money';
-import { estimateTax, type TaxEstimate } from './tax';
+import { inHome } from './currency';
+import { estimateTax, type TaxEstimate, type TaxOf } from './tax';
 import { PAYMENTS_ON_ACCOUNT_THRESHOLD, type TaxYearRates } from './taxRates';
 import type { Expense, Invoice, ISODate } from './types';
 
@@ -18,12 +19,18 @@ export const MIN_DAYS_FOR_PROJECTION = 61;
 
 type Range = [ISODate, ISODate];
 
-/** Income received (paid invoices, excluding VAT) between two dates. */
+/**
+ * Income received (paid invoices, excluding VAT) between two dates, in the
+ * home currency. Foreign-currency invoices count what actually arrived.
+ */
 export function cashIncome(invoices: Invoice[], range: Range): number {
   return sumPounds(
-    invoices.filter(i => i.status === 'paid' && i.paidDate && inRange(i.paidDate, range)).map(i => i.subtotal),
+    invoices.filter(i => i.status === 'paid' && i.paidDate && inRange(i.paidDate, range)).map(i => inHome(i, 'subtotal')),
   );
 }
+
+/** UK Income Tax and Class 4 NI on profit, on top of any other income. */
+export const ukTax = (otherIncome: number, rates: TaxYearRates): TaxOf => profit => estimateTax(profit, otherIncome, rates);
 
 export function expensesTotal(expenses: Expense[], range: Range): number {
   return sumPounds(expenses.filter(x => inRange(x.date, range)).map(x => x.amount));
@@ -42,14 +49,14 @@ export function yearFigures(
   invoices: Invoice[],
   expenses: Expense[],
   taxYear: number,
-  otherIncome: number,
-  rates: TaxYearRates,
+  taxOf: TaxOf,
+  sys: YearSystem = 'uk',
 ): YearFigures {
-  const range = taxYearRange(taxYear);
+  const range = taxYearRange(taxYear, sys);
   const income = cashIncome(invoices, range);
   const exp = expensesTotal(expenses, range);
   const profit = sumPounds([income, -exp]);
-  const tax = estimateTax(profit, otherIncome, rates);
+  const tax = taxOf(profit);
   return { income, expenses: exp, profit, tax, takeHome: sumPounds([profit, -tax.total]) };
 }
 
@@ -69,14 +76,14 @@ export function projectYear(
   so: YearFigures,
   taxYear: number,
   today: ISODate,
-  otherIncome: number,
-  rates: TaxYearRates,
+  taxOf: TaxOf,
+  sys: YearSystem = 'uk',
 ): YearProjection | null {
-  const progress = taxYearProgress(taxYear, today);
-  if (progress >= 1 || daysElapsedInTaxYear(taxYear, today) < MIN_DAYS_FOR_PROJECTION) return null;
+  const progress = taxYearProgress(taxYear, today, sys);
+  if (progress >= 1 || daysElapsedInTaxYear(taxYear, today, sys) < MIN_DAYS_FOR_PROJECTION) return null;
   const income = so.income / progress;
   const profit = so.profit / progress;
-  const tax = estimateTax(profit, otherIncome, rates);
+  const tax = taxOf(profit);
   return { income, profit, tax, takeHome: profit - tax.total };
 }
 
@@ -130,8 +137,9 @@ export function quarterTotals(
   expenses: Expense[],
   taxYear: number,
   categories: readonly string[],
+  sys: YearSystem = 'uk',
 ): QuarterTotals[] {
-  return mtdQuarters(taxYear).map(([from, to], i) => {
+  return mtdQuarters(taxYear, sys).map(([from, to], i) => {
     const income = cashIncome(invoices, [from, to]);
     const xs = expenses.filter(x => inRange(x.date, [from, to]));
     const byCategory = categories.map(c => sumPounds(xs.filter(x => x.category === c).map(x => x.amount)));

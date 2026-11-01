@@ -52,7 +52,7 @@ END:VEVENT
 END:VCALENDAR`;
 
 const client = (name: string, email = ''): Client =>
-  ({ id: name, name, email, billing: 'hourly', rate: 0, fee: 0, included: 0, color: '', weekly: 0, address: '', createdAt: 0 });
+  ({ id: name, name, email, billing: 'hourly', rate: 0, fee: 0, included: 0, color: '', weekly: 0, currency: '', address: '', createdAt: 0 });
 const clients = [client('Northlight Legal', 'accounts@northlightlegal.co.uk'), client('Fennel Bakery'), client('Harbour & Pine Studio')];
 const now = new Date('2026-10-30T12:00:00Z');
 

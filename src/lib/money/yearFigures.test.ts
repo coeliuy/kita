@@ -1,7 +1,7 @@
 import { daysElapsedInTaxYear, mtdQuarters, monthsLeftInTaxYear, taxYearOf, taxYearRange } from './dates';
 import { ratesForTaxYear } from './taxRates';
 import type { Expense, Invoice } from './types';
-import { cashIncome, paymentDeadline, paymentsOnAccountLikely, projectYear, quarterTotals, taxPot, yearFigures } from './yearFigures';
+import { cashIncome, ukTax, paymentDeadline, paymentsOnAccountLikely, projectYear, quarterTotals, taxPot, yearFigures } from './yearFigures';
 
 const rates = ratesForTaxYear(2026).rates;
 
@@ -53,7 +53,7 @@ describe('cash basis income', () => {
   });
 
   it('works out profit, tax and take-home', () => {
-    const f = yearFigures(invoices, [exp(500, '2026-05-02'), exp(99, '2026-04-05')], 2026, 30_000, rates);
+    const f = yearFigures(invoices, [exp(500, '2026-05-02'), exp(99, '2026-04-05')], 2026, ukTax(30_000, rates));
     expect(f.income).toBe(3000);
     expect(f.expenses).toBe(500);
     expect(f.profit).toBe(2500);
@@ -64,21 +64,21 @@ describe('cash basis income', () => {
 });
 
 describe('projectYear', () => {
-  const so = yearFigures([inv(10_000, '2026-05-01', '2026-05-01')], [], 2026, 0, rates);
+  const so = yearFigures([inv(10_000, '2026-05-01', '2026-05-01')], [], 2026, ukTax(0, rates));
 
   it('waits until enough of the year has passed', () => {
     // Previously the first week of April could multiply figures by 50.
-    expect(projectYear(so, 2026, '2026-04-20', 0, rates)).toBeNull();
-    expect(projectYear(so, 2026, '2026-06-05', 0, rates)).not.toBeNull(); // day 61
+    expect(projectYear(so, 2026, '2026-04-20', ukTax(0, rates))).toBeNull();
+    expect(projectYear(so, 2026, '2026-06-05', ukTax(0, rates))).not.toBeNull(); // day 61
   });
 
   it('scales the year so far to a full year', () => {
-    const p = projectYear(so, 2026, '2026-10-30', 0, rates)!; // 208 of 365 days
+    const p = projectYear(so, 2026, '2026-10-30', ukTax(0, rates))!; // 208 of 365 days
     expect(p.income).toBeCloseTo((10_000 * 365) / 208, 2);
   });
 
   it('does not project a finished year', () => {
-    expect(projectYear(so, 2026, '2027-05-01', 0, rates)).toBeNull();
+    expect(projectYear(so, 2026, '2027-05-01', ukTax(0, rates))).toBeNull();
   });
 });
 

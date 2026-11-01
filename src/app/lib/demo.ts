@@ -22,7 +22,7 @@ export function buildDemoData(today: ISODate, existingCategories: Category[] = [
   const rand = seeded(7);
   const pick = <T,>(list: readonly T[]) => list[Math.floor(rand() * list.length)]!;
   const now = Date.now();
-  const base = { email: '', address: '', createdAt: now, weekly: 0, demo: true };
+  const base = { email: '', address: '', createdAt: now, weekly: 0, currency: '', demo: true };
   const clients: Client[] = [
     { ...base, id: uid(), name: 'Harbour & Pine Studio', billing: 'hourly', rate: 45, fee: 0, included: 0, color: COLORS[1]! },
     {
@@ -125,7 +125,7 @@ export function buildDemoData(today: ISODate, existingCategories: Category[] = [
       id, clientId: c.id, clientName: c.name, clientAddress: '', clientEmail: '', period: prev, issueDate,
       dueDate: dueDate(issueDate, '30'), lines: draft.lines, vatRate: 0, ...invoiceTotals(draft.lines, 0),
       status: paid ? 'paid' : 'unpaid', paidDate: paid ? (paidOn < today ? paidOn : today) : null, note: '',
-      entryIds: draft.entryIds, createdAt: now, demo: true,
+      entryIds: draft.entryIds, createdAt: now, demo: true, currency: '', fxRate: null, receivedHome: null,
       from: { name: '', business: '', address: '', email: '', payment: '', vatNumber: '' },
     });
     for (const e of entries) if (draft.entryIds.includes(e.id)) e.invoiceId = id;

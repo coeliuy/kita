@@ -75,6 +75,15 @@ export interface Invoice {
   status: 'unpaid' | 'paid';
   /** Cash basis: income counts on this date. */
   paidDate?: ISODate | null;
+  /** The invoice's currency code, e.g. 'USD'. Empty or missing means the home currency. */
+  currency?: string;
+  /**
+   * For an invoice in another currency: home currency per 1 unit of the invoice's
+   * currency (e.g. 0.79 for USD when home is GBP). Null or missing = home currency.
+   */
+  fxRate?: number | null;
+  /** For a paid foreign-currency invoice: the total that actually arrived, in the home currency. */
+  receivedHome?: number | null;
 }
 
 export interface Expense {

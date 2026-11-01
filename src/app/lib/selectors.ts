@@ -3,6 +3,12 @@
  * module. No maths of its own beyond adding things up.
  */
 import {
+  flatSetAside,
+  inHome,
+  roundPence,
+  ukTax,
+  type TaxOf,
+  type YearSystem,
   billableMinutes,
   effectiveHourlyRate,
   goalProgress,
@@ -27,6 +33,7 @@ import {
   type TaxYearRates,
 } from '../../lib/money';
 import { DEFAULT_YEAR, type Client, type KitaData, type YearSettings } from '../store/types';
+import { homeCurrency, region, yearSystem } from './region';
 
 export const clientById = (d: KitaData, id: string) => d.clients.find(c => c.id === id);
 
@@ -68,15 +75,28 @@ export function ratesFor(d: KitaData, taxYear: number) {
 
 /** Tax years with any data, plus the current one, newest first. */
 export function taxYearsWithData(d: KitaData, todayDate: ISODate): number[] {
-  const years = new Set([taxYearOf(todayDate)]);
-  for (const i of d.invoices) years.add(taxYearOf(i.paidDate || i.issueDate));
-  for (const x of d.expenses) years.add(taxYearOf(x.date));
-  for (const e of d.entries) years.add(taxYearOf(e.date));
+  const sys = yearSystem(d);
+  const years = new Set([taxYearOf(todayDate, sys)]);
+  for (const i of d.invoices) years.add(taxYearOf(i.paidDate || i.issueDate, sys));
+  for (const x of d.expenses) years.add(taxYearOf(x.date, sys));
+  for (const e of d.entries) years.add(taxYearOf(e.date, sys));
   return [...years].sort((a, b) => b - a);
 }
 
+/**
+ * Home currency per 1 unit of `code`: 1 for the home currency, the last known
+ * rate for others, or null if Kita doesn't have a rate yet.
+ */
+export const fxRateFor = (d: KitaData, code: string): number | null =>
+  !code || code === homeCurrency(d) ? 1 : d.settings.fxRates[code]?.rate ?? null;
+
 export interface ClientMonth {
   client: Client;
+  /** The client's currency, and their value and unbilled amount in it. */
+  currency: string;
+  own: { value: number; unbilled: number };
+  /** True when the client is billed in another currency and there's no exchange rate yet. */
+  noRate: boolean;
   minutes: number;
   billableMinutes: number;
   value: number;
@@ -110,15 +130,23 @@ export function monthSummary(d: KitaData, month: MonthKey): MonthSummary {
       minutes, billableMinutes: bmin, retainerActive: active, fixedAllTimeMinutes: sumMinutes(allOwn),
     });
     if (minutes === 0 && value === 0) continue;
+    const unbilled = unbilledForMonth(client, {
+      month, entries: own, retainerActive: active, clientInvoices: d.invoices.filter(i => i.clientId === client.id),
+    });
+    // Values are worked out in the client's currency, then converted to the home currency.
+    const currency = client.currency || homeCurrency(d);
+    const rate = fxRateFor(d, currency);
+    const home = (n: number) => roundPence(n * (rate ?? 0));
     rows.push({
       client,
+      currency,
+      own: { value, unbilled },
+      noRate: rate === null,
       minutes,
       billableMinutes: bmin,
-      value,
-      unbilled: unbilledForMonth(client, {
-        month, entries: own, retainerActive: active, clientInvoices: d.invoices.filter(i => i.clientId === client.id),
-      }),
-      hourly: effectiveHourlyRate(value, minutes),
+      value: home(value),
+      unbilled: home(unbilled),
+      hourly: effectiveHourlyRate(home(value), minutes),
       usage: active && client.included > 0 ? retainerUsage(client, bmin) : null,
     });
   }
@@ -132,8 +160,8 @@ export function monthSummary(d: KitaData, month: MonthKey): MonthSummary {
 }
 
 /** Months a tax year touches, up to (and including) a given month. */
-function taxYearMonths(taxYear: number, upTo: MonthKey): MonthKey[] {
-  const [start, end] = taxYearRange(taxYear);
+function taxYearMonths(taxYear: number, upTo: MonthKey, sys: YearSystem): MonthKey[] {
+  const [start, end] = taxYearRange(taxYear, sys);
   const out: MonthKey[] = [];
   for (let m = monthOf(start); m <= monthOf(end) && m <= upTo; m = shiftMonth(m, 1)) out.push(m);
   return out;
@@ -142,28 +170,31 @@ function taxYearMonths(taxYear: number, upTo: MonthKey): MonthKey[] {
 export function yearSummary(d: KitaData, taxYear: number, todayDate: ISODate) {
   const ys = yearSettings(d, taxYear);
   const { rates, ratesYear, isFallback, overridden } = ratesFor(d, taxYear);
-  const figures = yearFigures(d.invoices, d.expenses, taxYear, ys.otherIncome, rates);
-  const projection = projectYear(figures, taxYear, todayDate, ys.otherIncome, rates);
-  const range = taxYearRange(taxYear);
+  const sys = yearSystem(d);
+  // UK: Income Tax and NI. Elsewhere: the share of profit the person chose to set aside.
+  const taxOf: TaxOf = region(d).tax === 'uk' ? ukTax(ys.otherIncome, rates) : profit => flatSetAside(profit, d.settings.setAside);
+  const figures = yearFigures(d.invoices, d.expenses, taxYear, taxOf, sys);
+  const projection = projectYear(figures, taxYear, todayDate, taxOf, sys);
+  const range = taxYearRange(taxYear, sys);
 
   // Your average value per hour this year, used to turn a goal into hours.
-  const months = taxYearMonths(taxYear, monthOf(todayDate));
+  const months = taxYearMonths(taxYear, monthOf(todayDate), sys);
   const summaries = months.map(m => monthSummary(d, m));
   const workValue = sumPounds(summaries.map(s => s.value));
   const minutes = sumMinutes(entriesIn(d, range[0], range[1]));
   const hourlyValue = effectiveHourlyRate(workValue, minutes) ?? 0;
 
   const awaiting = sumPounds(
-    d.invoices.filter(i => i.status !== 'paid' && taxYearOf(i.issueDate) === taxYear).map(i => i.subtotal),
+    d.invoices.filter(i => i.status !== 'paid' && taxYearOf(i.issueDate, sys) === taxYear).map(i => inHome(i, 'subtotal')),
   );
 
   const goal =
     ys.goal > 0
       ? goalProgress({
           goal: ys.goal, goalType: ys.goalType, income: figures.income, profit: figures.profit,
-          takeHome: figures.takeHome, otherIncome: ys.otherIncome, hourlyValue, taxYear, today: todayDate, rates,
+          takeHome: figures.takeHome, hourlyValue, taxYear, today: todayDate, taxOf, sys,
         })
       : null;
 
-  return { ys, rates, ratesYear, isFallback, overridden, figures, projection, minutes, hourlyValue, awaiting, goal };
+  return { ys, sys, rates, ratesYear, isFallback, overridden, figures, projection, minutes, hourlyValue, awaiting, goal };
 }

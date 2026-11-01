@@ -4,6 +4,7 @@
  */
 import { addDays, effectiveHourlyRate, monthOf, shiftMonth, type ISODate } from '../../lib/money';
 import type { Client, KitaData } from '../store/types';
+import { money0 } from './format';
 import { activeClients, categoryName, entriesIn, monthSummary } from './selectors';
 import { minutesLeft, taskMinutes } from './tasks';
 
@@ -84,7 +85,6 @@ const RATE_GAP = 0.2;
  */
 export function insights(d: KitaData, today: ISODate): Insight[] {
   const out: Insight[] = [];
-  const gbp0 = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`;
   const months = [0, 1, 2].map(i => shiftMonth(monthOf(today), -i));
   const agg = new Map<string, { client: Client; value: number; minutes: number; over: number }>();
   let totalValue = 0, totalMinutes = 0;
@@ -105,9 +105,9 @@ export function insights(d: KitaData, today: ISODate): Insight[] {
     if (avg && rate && a.minutes >= MIN_MINUTES_FOR_RATE) {
       const diff = (rate - avg) / avg;
       if (diff <= -RATE_GAP) {
-        out.push({ tone: 'warn', text: `${a.client.name} pays you ${gbp0(rate)} an hour in practice, ${Math.round(-diff * 100)}% below your ${gbp0(avg)} average. Worth reviewing your rate or the scope of work.` });
+        out.push({ tone: 'warn', text: `${a.client.name} pays you ${money0(rate)} an hour in practice, ${Math.round(-diff * 100)}% below your ${money0(avg)} average. Worth reviewing your rate or the scope of work.` });
       } else if (diff >= RATE_GAP) {
-        out.push({ tone: 'good', text: `${a.client.name} is your best-paid work at ${gbp0(rate)} an hour, ${Math.round(diff * 100)}% above your average.` });
+        out.push({ tone: 'good', text: `${a.client.name} is your best-paid work at ${money0(rate)} an hour, ${Math.round(diff * 100)}% above your average.` });
       }
     }
     if (a.over >= 2) out.push({ tone: 'warn', text: `${a.client.name} went over its retainer in ${a.over} of the last 3 months. Consider raising the included hours.` });

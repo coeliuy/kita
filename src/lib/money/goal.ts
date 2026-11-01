@@ -4,9 +4,8 @@
  * A goal is measured either as income received ('gross') or as take-home
  * after estimated tax ('net').
  */
-import { monthsLeftInTaxYear, taxYearProgress } from './dates';
-import { estimateTax } from './tax';
-import type { TaxYearRates } from './taxRates';
+import { monthsLeftInTaxYear, taxYearProgress, type YearSystem } from './dates';
+import type { TaxOf } from './tax';
 import type { ISODate } from './types';
 
 export type GoalType = 'gross' | 'net';
@@ -17,18 +16,14 @@ export type GoalType = 'gross' | 'net';
  * which changes across bands, so we search for the answer: try an amount,
  * see what take-home it gives, and narrow down until it's within a penny.
  */
-export function grossNeededForTakeHome(
-  currentProfit: number,
-  extraTakeHome: number,
-  otherIncome: number,
-  rates: TaxYearRates,
-): number {
+export function grossNeededForTakeHome(currentProfit: number, extraTakeHome: number, taxOf: TaxOf): number {
   if (extraTakeHome <= 0) return 0;
-  const takeHome = (profit: number) => profit - estimateTax(profit, otherIncome, rates).total;
+  const takeHome = (profit: number) => profit - taxOf(profit).total;
   const now = takeHome(currentProfit);
   let lo = 0;
-  // The top combined marginal rate is under 70%, so 4× is always enough.
+  // Start high enough for any marginal rate below 75%, and double if that's not enough.
   let hi = extraTakeHome * 4 + 1000;
+  while (takeHome(currentProfit + hi) - now < extraTakeHome && hi < 1e12) hi *= 2;
   while (hi - lo > 0.01) {
     const mid = (lo + hi) / 2;
     if (takeHome(currentProfit + mid) - now >= extraTakeHome) hi = mid;
@@ -46,12 +41,13 @@ export interface GoalInput {
   profit: number;
   /** Take-home so far. */
   takeHome: number;
-  otherIncome: number;
   /** Your average value per hour worked, to turn money into hours. 0 if unknown. */
   hourlyValue: number;
   taxYear: number;
   today: ISODate;
-  rates: TaxYearRates;
+  /** How tax is worked out on profit (UK rules, or a chosen set-aside share). */
+  taxOf: TaxOf;
+  sys?: YearSystem;
 }
 
 export interface GoalProgress {
@@ -75,12 +71,13 @@ export interface GoalProgress {
 
 export function goalProgress(g: GoalInput): GoalProgress {
   const achieved = g.goalType === 'net' ? g.takeHome : g.income;
-  const progress = taxYearProgress(g.taxYear, g.today);
+  const sys = g.sys ?? 'uk';
+  const progress = taxYearProgress(g.taxYear, g.today, sys);
   const live = progress > 0 && progress < 1;
   const remaining = Math.max(0, g.goal - achieved);
   const grossNeeded =
-    g.goalType === 'net' ? grossNeededForTakeHome(g.profit, remaining, g.otherIncome, g.rates) : remaining;
-  const monthsLeft = live ? monthsLeftInTaxYear(g.taxYear, g.today) : 0;
+    g.goalType === 'net' ? grossNeededForTakeHome(g.profit, remaining, g.taxOf) : remaining;
+  const monthsLeft = live ? monthsLeftInTaxYear(g.taxYear, g.today, sys) : 0;
   const onPace = live ? g.goal * progress : null;
   const perMonth = live && remaining > 0 ? grossNeeded / monthsLeft : null;
   return {

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { taxYearLabel } from '../../lib/money';
 import { today } from '../lib/format';
 import { activeClients, sortedCategories, taxYearsWithData } from '../lib/selectors';
+import { yearSystem } from '../lib/region';
 import { useKita } from '../store/KitaProvider';
 
 const ICONS: Record<string, ReactNode> = {
@@ -54,11 +55,12 @@ export function ConfirmButton({ className = 'btn link danger', onConfirm, childr
 
 export function TaxYearSelect({ value, onChange }: { value: number; onChange: (y: number) => void }) {
   const { data } = useKita();
+  const sys = yearSystem(data);
   return (
     <label className="f" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <span>Tax year</span>
+      <span>{sys === 'uk' ? 'Tax year' : 'Year'}</span>
       <select style={{ width: 'auto' }} value={value} onChange={e => onChange(+e.target.value)}>
-        {taxYearsWithData(data, today()).map(y => <option key={y} value={y}>{taxYearLabel(y)}</option>)}
+        {taxYearsWithData(data, today()).map(y => <option key={y} value={y}>{taxYearLabel(y, sys)}</option>)}
       </select>
     </label>
   );

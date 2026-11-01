@@ -9,6 +9,8 @@ export interface Client extends M.Client {
   color: string;
   /** Expected hours a week from this client, for capacity planning (0 = work it out). */
   weekly: number;
+  /** The currency this client is billed in ('' = your home currency). */
+  currency: string;
   email: string;
   address: string;
   createdAt: number;
@@ -40,6 +42,10 @@ export interface InvoiceSender {
 
 export interface Invoice extends M.Invoice {
   number: string;
+  /** '' = home currency. */
+  currency: string;
+  fxRate: number | null;
+  receivedHome: number | null;
   clientName: string;
   clientAddress: string;
   clientEmail: string;
@@ -85,6 +91,15 @@ export interface Expense extends M.Expense {
 
 export type Theme = '' | 'light' | 'dark';
 
+/** Where you're based. '' = not chosen yet. */
+export type Country = '' | 'GB' | 'PH' | 'US' | 'OTHER';
+
+/** A remembered exchange rate: home currency per 1 unit of another currency. */
+export interface FxRate {
+  rate: number;
+  date: ISODate;
+}
+
 export interface Settings {
   name: string;
   business: string;
@@ -104,6 +119,13 @@ export interface Settings {
   invNotes: boolean;
   /** Hide the "Get set up" checklist on Today. */
   hideSetup: boolean;
+  country: Country;
+  /** Home currency: income, expenses, tax and goals are counted in this. */
+  currency: string;
+  /** Outside the UK: the % of profit to set aside for tax. */
+  setAside: number;
+  /** Last known exchange rates into the home currency, by currency code. */
+  fxRates: Record<string, FxRate>;
 }
 
 /** The numeric tax rate fields a user can override for a year. */
@@ -146,7 +168,7 @@ export interface KitaData {
 export const DEFAULT_SETTINGS: Settings = {
   name: '', business: '', address: '', email: '', payment: '', vatNumber: '',
   invPrefix: 'INV-', nextInv: 1, terms: '30', vatRegistered: false, vatRate: 20, theme: '',
-  capacity: 0, invNotes: true, hideSetup: false,
+  capacity: 0, invNotes: true, hideSetup: false, country: '', currency: 'GBP', setAside: 25, fxRates: {},
 };
 
 export const DEFAULT_YEAR: YearSettings = { otherIncome: 0, goal: 0, goalType: 'gross', taxSaved: 0, rateOverrides: {} };

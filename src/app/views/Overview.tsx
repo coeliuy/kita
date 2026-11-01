@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { addDays, formatHM, monthEnd, monthLabel, shiftMonth, sumMinutes, taxYearLabel, taxYearOf, type MonthKey } from '../../lib/money';
+import { yearSystem } from '../lib/region';
 import { CountUp, Icon, NumberField, plural } from '../components/ui';
 import { capacity, insights, whatIf } from '../lib/planning';
 import { clientReportPdf, download } from '../lib/files';
-import { fmtDate, gbp, gbp0, hrsTxt, parseYmd, thisMonth, today } from '../lib/format';
+import { fmtDate, homeCurrencyCode, money, money0, hrsTxt, parseYmd, thisMonth, today } from '../lib/format';
 import { monthSummary, yearSummary, type ClientMonth } from '../lib/selectors';
 import { useRouter } from '../router';
 import { useKita } from '../store/KitaProvider';
@@ -11,6 +12,7 @@ import { useInvoiceDraft } from './invoiceDraft';
 
 function ClientRow({ r, maxMinutes, onReport }: { r: ClientMonth; maxMinutes: number; onReport: () => void }) {
   const c = r.client;
+  const foreign = r.currency !== homeCurrencyCode();
   let bar, note;
   if (r.usage) {
     const u = r.usage;
@@ -21,18 +23,19 @@ function ClientRow({ r, maxMinutes, onReport }: { r: ClientMonth; maxMinutes: nu
         <span className="mk" style={{ left: `${100 / 1.25}%` }} />
       </div>
     );
-    if (u.status === 'over') note = <span className="tag bad">{u.overHours.toFixed(1)} h over the {c.included} h retainer{c.rate ? `. Bill the extra at ${gbp(c.rate)}/h` : ''}</span>;
+    if (u.status === 'over') note = <span className="tag bad">{u.overHours.toFixed(1)} h over the {c.included} h retainer{c.rate ? `. Bill the extra at ${money(c.rate, r.currency)}/h` : ''}</span>;
     else if (u.status === 'near') note = <span className="tag warn">{(u.share * 100).toFixed(0)}% of the {c.included} h retainer used</span>;
     else note = <span className="muted">{u.leftHours.toFixed(1)} of {c.included} retainer hours left</span>;
   } else {
     bar = <div className="bar"><i style={{ width: `${(r.minutes / maxMinutes) * 100}%`, background: c.color }} /></div>;
-    if (c.billing === 'fixed' && r.hourly) note = <span className="muted">Fixed fee of {gbp0(c.fee)} works out at {gbp0(r.hourly)}/h across all the time tracked so far</span>;
+    if (c.billing === 'fixed' && r.hourly) note = <span className="muted">Fixed fee of {money0(c.fee, r.currency)} works out at {money0(r.hourly)}/h across all the time tracked so far</span>;
   }
   return (
     <div className="cl">
       <div className="nm"><span className="dot" style={{ background: c.color }} /><span>{c.name}</span></div>
       {bar}
-      <div className="num">{hrsTxt(r.minutes)} · {gbp0(r.value)} · <span className="muted">{r.hourly ? `${gbp0(r.hourly)}/h` : '—'}</span></div>
+      <div className="num">{hrsTxt(r.minutes)} · {foreign ? <>{money0(r.own.value, r.currency)}{r.noRate ? '' : <span className="muted"> (≈ {money0(r.value)})</span>}</> : money0(r.value)} · <span className="muted">{r.hourly ? `${money0(r.hourly)}/h` : '—'}</span></div>
+      {r.noRate && r.minutes > 0 && <div className="note"><span className="tag warn">No {r.currency} exchange rate yet, so this client isn’t in your totals. Add one in Settings.</span></div>}
       {(note || r.minutes > 0) && (
         <div className="note row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{note}</span>
@@ -132,7 +135,8 @@ export function Overview() {
   const rows = [...m.rows].sort((a, b) => b.minutes - a.minutes);
   const maxMinutes = Math.max(1, ...rows.map(r => r.minutes));
 
-  const ty = taxYearOf(today());
+  const sys = yearSystem(data);
+  const ty = taxYearOf(today(), sys);
   const y = yearSummary(data, ty, today());
 
   return (
@@ -147,9 +151,9 @@ export function Overview() {
         </div>
         <div className="figs">
           <div className="fig"><div className="v"><CountUp key={month} value={m.minutes} format={formatHM} /></div><div className="l">Hours tracked over {workDays} {plural(workDays, 'day')}</div></div>
-          <div className="fig hero"><div className="v"><CountUp key={month} value={m.value} format={gbp0} /></div><div className="l">Value of your work</div></div>
-          <div className="fig"><div className="v">{gbp0(m.minutes ? m.value / (m.minutes / 60) : 0)}</div><div className="l">Average per hour</div></div>
-          <div className="fig"><div className="v"><CountUp key={month} value={m.unbilled} format={gbp0} /></div><div className="l">Not invoiced yet</div></div>
+          <div className="fig hero"><div className="v"><CountUp key={month} value={m.value} format={money0} /></div><div className="l">Value of your work</div></div>
+          <div className="fig"><div className="v">{money0(m.minutes ? m.value / (m.minutes / 60) : 0)}</div><div className="l">Average per hour</div></div>
+          <div className="fig"><div className="v"><CountUp key={month} value={m.unbilled} format={money0} /></div><div className="l">Not invoiced yet</div></div>
         </div>
       </section>
       <CapacitySection />
@@ -173,12 +177,12 @@ export function Overview() {
       </section>
       <InsightsSection />
       <section>
-        <div className="head"><h2>Tax year {taxYearLabel(ty)}</h2><button className="btn sm secondary" onClick={() => go('money')}>See take-home and tax</button></div>
+        <div className="head"><h2>{sys === 'uk' ? `Tax year ${taxYearLabel(ty, sys)}` : taxYearLabel(ty, sys)}</h2><button className="btn sm secondary" onClick={() => go('money')}>See take-home and tax</button></div>
         <div className="figs">
-          <div className="fig"><div className="v">{gbp0(y.figures.income)}</div><div className="l">Received so far</div></div>
-          <div className="fig"><div className="v">{gbp0(y.figures.takeHome)}</div><div className="l">Estimated take-home</div></div>
-          <div className="fig"><div className="v">{gbp0(y.figures.tax.total)}</div><div className="l">To set aside for tax (estimate)</div></div>
-          {y.goal && <div className="fig"><div className="v">{Math.round(y.goal.share * 100)}%</div><div className="l">of your {gbp0(y.ys.goal)} {y.ys.goalType === 'net' ? 'take-home' : 'income'} goal</div></div>}
+          <div className="fig"><div className="v">{money0(y.figures.income)}</div><div className="l">Received so far</div></div>
+          <div className="fig"><div className="v">{money0(y.figures.takeHome)}</div><div className="l">Estimated take-home</div></div>
+          <div className="fig"><div className="v">{money0(y.figures.tax.total)}</div><div className="l">To set aside for tax (estimate)</div></div>
+          {y.goal && <div className="fig"><div className="v">{Math.round(y.goal.share * 100)}%</div><div className="l">of your {money0(y.ys.goal)} {y.ys.goalType === 'net' ? 'take-home' : 'income'} goal</div></div>}
         </div>
       </section>
     </>

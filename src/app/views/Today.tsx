@@ -1,9 +1,11 @@
 /** Today: a greeting, what needs attention, today's tasks, and the key numbers. */
-import { addDays, formatHM, isOverdue, sumMinutes, sumPounds, taxYearOf } from '../../lib/money';
+import { useState } from 'react';
+import { addDays, currencySymbol, formatHM, inHome, isOverdue, sumMinutes, sumPounds, taxYearOf } from '../../lib/money';
+import { countryInfo, detectCountry, yearSystem } from '../lib/region';
 import { TaskRow } from '../components/TaskRow';
 import { TimerCard } from '../components/TimerCard';
 import { CountUp, Icon, plural } from '../components/ui';
-import { gbp0, parseYmd, thisMonth, today } from '../lib/format';
+import { homeCurrencyCode, money0, parseYmd, thisMonth, today } from '../lib/format';
 import { entriesIn, monthSummary, yearSummary } from '../lib/selectors';
 import { capacity } from '../lib/planning';
 import { comingUp, isOverdueTask, tasksForToday } from '../lib/tasks';
@@ -55,7 +57,7 @@ function nudges(d: KitaData, t: string): [string, View, string][] {
   const overdue = d.invoices.filter(i => isOverdue(i, t));
   if (overdue.length) {
     const who = overdue.length === 1 ? `${overdue[0]!.number} is` : `${overdue.length} invoices are`;
-    out.push(['bad', 'invoices', `${who} overdue: ${gbp0(sumPounds(overdue.map(i => i.total)))} to chase.`]);
+    out.push(['bad', 'invoices', `${who} overdue: ${money0(sumPounds(overdue.map(i => inHome(i, 'total'))))} to chase.`]);
   }
   for (const r of monthSummary(d, thisMonth()).rows) {
     if (!r.usage) continue;
@@ -71,6 +73,24 @@ function nudges(d: KitaData, t: string): [string, View, string][] {
   return out;
 }
 
+/** Asks new (and existing) users to confirm where they're based, with a guess from their device. */
+function CountryCard() {
+  const { data, updateSettings } = useKita();
+  const { go } = useRouter();
+  const [guess] = useState(() => countryInfo(detectCountry()));
+  const hasData = data.clients.length + data.invoices.length + data.expenses.length > 0;
+  const use = () => updateSettings(hasData ? { country: guess.code } : { country: guess.code, currency: guess.currency });
+  return (
+    <section className="callout info country-card">
+      <p><b>Where are you based?</b> It sets your currency, your tax year and how Kita estimates tax. {guess.code === 'OTHER' ? 'Kita has a full tax estimate for the UK, and a simpler one for everywhere else.' : `It looks like you’re in ${guess.code === 'GB' || guess.code === 'US' ? 'the ' : ''}${guess.name}.`}</p>
+      <div className="row" style={{ marginTop: 10, gap: 8 }}>
+        <button className="btn primary sm" onClick={use}>{guess.code === 'OTHER' ? 'Use the simpler estimate' : `Yes, ${guess.name}${hasData || guess.currency === homeCurrencyCode() ? '' : ` (${currencySymbol(guess.currency)})`}`}</button>
+        <button className="btn sm secondary" onClick={() => go('settings')}>Choose another country</button>
+      </div>
+    </section>
+  );
+}
+
 export function Today() {
   const { data } = useKita();
   const { go } = useRouter();
@@ -82,16 +102,16 @@ export function Today() {
   const sunday = addDays(monday, 6);
   const weekMin = sumMinutes(entriesIn(data, monday, sunday));
   const todayMin = sumMinutes(entriesIn(data, t, t));
-  const owed = sumPounds(data.invoices.filter(i => i.status !== 'paid').map(i => i.total));
+  const owed = sumPounds(data.invoices.filter(i => i.status !== 'paid').map(i => inHome(i, 'total')));
   const forToday = tasksForToday(data.tasks, t);
   const upNext = comingUp(data.tasks, t, sunday);
-  const takeHome = yearSummary(data, taxYearOf(t), t).figures.takeHome;
+  const takeHome = yearSummary(data, taxYearOf(t, yearSystem(data)), t).figures.takeHome;
 
   const parts: string[] = [];
   if (data.clients.length) {
     parts.push(forToday.length ? `${forToday.length} ${plural(forToday.length, 'task')} on your plate today` : 'Nothing due today');
     parts.push(`${hours1(weekMin)} hours tracked this week`);
-    if (owed) parts.push(`${gbp0(owed)} waiting to be paid`);
+    if (owed) parts.push(`${money0(owed)} waiting to be paid`);
   }
   const summary = parts.length
     ? `${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts.at(-1)}.`
@@ -105,6 +125,7 @@ export function Today() {
         <h1>{greeting}{first ? `, ${first}` : ''}.</h1>
         <p className="summary">{summary}</p>
       </section>
+      {!data.settings.country && <CountryCard />}
       <SetupChecklist />
       <TimerCard />
       {alerts.length > 0 && (
@@ -129,8 +150,8 @@ export function Today() {
             <div className="figs">
               <div className="fig"><div className="v"><CountUp value={todayMin} format={formatHM} /></div><div className="l">Tracked today</div></div>
               <div className="fig"><div className="v"><CountUp value={weekMin} format={formatHM} /></div><div className="l">This week</div></div>
-              <div className="fig"><div className="v"><CountUp value={owed} format={gbp0} /></div><div className="l">Waiting to be paid</div></div>
-              <div className="fig hero"><div className="v"><CountUp value={takeHome} format={gbp0} /></div><div className="l">Estimated take-home this tax year</div></div>
+              <div className="fig"><div className="v"><CountUp value={owed} format={money0} /></div><div className="l">Waiting to be paid</div></div>
+              <div className="fig hero"><div className="v"><CountUp value={takeHome} format={money0} /></div><div className="l">Estimated take-home this tax year</div></div>
             </div>
           </section>
         </>

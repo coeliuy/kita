@@ -1,13 +1,18 @@
 /** Formatting for the screens and PDFs: money, dates and hours. */
-import type { ISODate } from '../../lib/money';
+import { currencySymbol, formatMoney, type ISODate } from '../../lib/money';
 
-const GBP = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' });
-const GBP0 = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
+let home = 'GBP';
 
-/** £1,234.56 */
-export const gbp = (n: number) => GBP.format(n || 0);
-/** £1,235 */
-export const gbp0 = (n: number) => GBP0.format(Math.round(n || 0));
+/** Set the account's home currency, used by money() and money0(). */
+export const setHomeCurrency = (code: string) => { home = code || 'GBP'; };
+export const homeCurrencyCode = () => home;
+/** The home currency's symbol, e.g. '£', for labels like "Hourly rate (£)". */
+export const homeSymbol = () => currencySymbol(home);
+
+/** £1,234.56 in the home currency, or in `code` if given. */
+export const money = (n: number, code: string = home) => formatMoney(n, code || home);
+/** £1,235: whole units. */
+export const money0 = (n: number, code: string = home) => formatMoney(n, code || home, true);
 
 const pad = (n: number) => String(n).padStart(2, '0');
 

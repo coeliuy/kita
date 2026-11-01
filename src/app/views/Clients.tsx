@@ -1,22 +1,28 @@
 import { useState, type FormEvent } from 'react';
-import { monthEnd, monthLabel, monthOf, monthStart, type BillingType } from '../../lib/money';
+import { CURRENCIES, currencySymbol, monthEnd, monthLabel, monthOf, monthStart, type BillingType } from '../../lib/money';
 import { COLORS } from '../lib/demo';
-import { gbp, gbp0, thisMonth, uid } from '../lib/format';
+import { money as fmt, money0 as fmt0, thisMonth, uid } from '../lib/format';
+import { homeCurrency } from '../lib/region';
 import { useKita } from '../store/KitaProvider';
 import type { Client } from '../store/types';
 
 function terms(c: Client) {
-  if (c.billing === 'hourly') return `${gbp(c.rate)} per hour`;
+  const money = (n: number) => fmt(n, c.currency || undefined);
+  const money0 = (n: number) => fmt0(n, c.currency || undefined);
+  if (c.billing === 'hourly') return `${money(c.rate)} per hour`;
   if (c.billing === 'retainer') {
     const from = c.startDate ? ` from ${monthLabel(monthOf(c.startDate))}` : '';
-    return `${gbp0(c.fee)} a month for ${c.included || 0} h${c.rate ? `, extra hours ${gbp(c.rate)}` : ''}${from}`;
+    return `${money0(c.fee)} a month for ${c.included || 0} h${c.rate ? `, extra hours ${money(c.rate)}` : ''}${from}`;
   }
-  return `Fixed fee ${gbp0(c.fee)}`;
+  return `Fixed fee ${money0(c.fee)}`;
 }
 
 function ClientForm({ client, onDone }: { client: Client | null; onDone: () => void }) {
   const { data, saveClient, deleteClient, toast } = useKita();
   const [billing, setBilling] = useState<BillingType>(client?.billing ?? 'hourly');
+  const home = homeCurrency(data);
+  const [currency, setCurrency] = useState(client?.currency || home);
+  const sym = currencySymbol(currency);
   const color = client?.color ?? COLORS[data.clients.length % COLORS.length]!;
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -28,7 +34,7 @@ function ClientForm({ client, onDone }: { client: Client | null; onDone: () => v
     const endMonth = str('endMonth');
     const c: Client = {
       ...(client ?? { id: uid(), createdAt: Date.now() }),
-      name: str('name'), billing, color: str('color'), weekly: num('weekly'), rate: num('rate'), fee: num('fee'), included: num('included'),
+      name: str('name'), billing, color: str('color'), weekly: num('weekly'), currency: currency === home ? '' : currency, rate: num('rate'), fee: num('fee'), included: num('included'),
       email: str('email'), address: str('address'), archived: fd.get('archived') === 'on',
       startDate: billing === 'retainer' && startMonth ? monthStart(startMonth) : client?.startDate ?? null,
       endDate: billing === 'retainer' && endMonth ? monthEnd(endMonth) : null,
@@ -52,14 +58,19 @@ function ClientForm({ client, onDone }: { client: Client | null; onDone: () => v
             </select>
           </label>
           <label className="f"><span>Colour</span><input type="color" name="color" defaultValue={color} /></label>
+          <label className="f"><span>Currency you bill them in</span>
+            <select value={currency} onChange={e => setCurrency(e.target.value)}>
+              {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} · {c.name}{c.code === home ? ' (your currency)' : ''}</option>)}
+            </select>
+          </label>
         </div>
         <div className="grid">
           {billing !== 'fixed' && (
-            <label className="f"><span>{billing === 'retainer' ? 'Rate for extra hours (£)' : 'Hourly rate (£)'}</span>
+            <label className="f"><span>{billing === 'retainer' ? 'Rate for extra hours' : 'Hourly rate'} ({sym})</span>
               <input type="number" step="0.01" min="0" name="rate" defaultValue={client?.rate || ''} /></label>
           )}
           {billing !== 'hourly' && (
-            <label className="f"><span>{billing === 'retainer' ? 'Monthly fee (£)' : 'Project fee (£)'}</span>
+            <label className="f"><span>{billing === 'retainer' ? 'Monthly fee' : 'Project fee'} ({sym})</span>
               <input type="number" step="0.01" min="0" name="fee" defaultValue={client?.fee || ''} /></label>
           )}
           {billing === 'retainer' && (

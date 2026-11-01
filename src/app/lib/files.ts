@@ -2,7 +2,8 @@
 import { billableMinutes, formatHM, lineAmount, monthEnd, monthLabel, quarterTotals, retainerUsage, sumMinutes, taxYearLabel } from '../../lib/money';
 import type { Invoice, KitaData } from '../store/types';
 import { EXPENSE_CATEGORIES } from './categories';
-import { fmtDate, gbp, parseYmd } from './format';
+import { fmtDate, homeCurrencyCode, money, parseYmd } from './format';
+import { yearSystem } from './region';
 
 export function download(filename: string, data: Blob | string, type = 'text/plain') {
   const blob = data instanceof Blob ? data : new Blob([data], { type });
@@ -30,9 +31,10 @@ export function entriesCsv(d: KitaData): string {
 }
 
 export function quartersCsv(d: KitaData, taxYear: number): { filename: string; text: string } {
-  const qs = quarterTotals(d.invoices, d.expenses, taxYear, EXPENSE_CATEGORIES);
+  const sys = yearSystem(d);
+  const qs = quarterTotals(d.invoices, d.expenses, taxYear, EXPENSE_CATEGORIES, sys);
   return {
-    filename: `kita-quarters-${taxYearLabel(taxYear).replace('/', '-')}.csv`,
+    filename: `kita-quarters-${taxYearLabel(taxYear, sys).replace('/', '-')}.csv`,
     text: csv([
       ['Quarter', 'From', 'To', 'Income received', ...EXPENSE_CATEGORIES, 'Total expenses', 'Profit'],
       ...qs.map(q => [`Q${q.quarter}`, q.from, q.to, q.income.toFixed(2), ...q.byCategory.map(v => v.toFixed(2)), q.expenses.toFixed(2), q.profit.toFixed(2)]),
@@ -44,8 +46,14 @@ export function quartersCsv(d: KitaData, taxYear: number): { filename: string; t
  * An A4 invoice. Uses the details saved on the invoice when it was created.
  * The PDF library is large, so it's only downloaded the first time it's needed.
  */
-export async function invoicePdf(inv: Invoice): Promise<Blob> {
+export async function invoicePdf(inv: Invoice, taxName = 'VAT'): Promise<Blob> {
   const { jsPDF } = await import('jspdf');
+  const cur = inv.currency || homeCurrencyCode();
+  // The PDF's built-in fonts have £, $ and € but not ₱, so other symbols are shown as the code (PHP 1,000.00).
+  const m = (n: number) => {
+    const s = money(n, cur);
+    return /^[\x00-\xff€]*$/.test(s) ? s : `${cur} ${money(n, cur).replace(/[^\d.,\-]/g, '')}`;
+  };
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const f = inv.from;
   const L = 20, R = 190;
@@ -58,7 +66,7 @@ export async function invoicePdf(inv: Invoice): Promise<Blob> {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   y += 12;
-  const from = [f.business || f.name, f.business ? f.name : '', ...f.address.split('\n'), f.email, f.vatNumber ? `VAT number: ${f.vatNumber}` : ''].filter(Boolean);
+  const from = [f.business || f.name, f.business ? f.name : '', ...f.address.split('\n'), f.email, f.vatNumber ? `${taxName === 'VAT' ? 'VAT number' : 'Tax ID'}: ${f.vatNumber}` : ''].filter(Boolean);
   const to = [inv.clientName, ...inv.clientAddress.split('\n'), inv.clientEmail].filter(Boolean);
   doc.setTextColor(110);
   doc.text('From', L, y);
@@ -95,8 +103,8 @@ export async function invoicePdf(inv: Invoice): Promise<Blob> {
     if (y + desc.length * 5 + detail.length * 4 > 265) { doc.addPage(); y = 24; }
     doc.text(desc, L, y);
     doc.text(String(+l.qty), 130, y, { align: 'right' });
-    doc.text(gbp(l.unit), 160, y, { align: 'right' });
-    doc.text(gbp(lineAmount(l)), R, y, { align: 'right' });
+    doc.text(m(l.unit), 160, y, { align: 'right' });
+    doc.text(m(lineAmount(l)), R, y, { align: 'right' });
     y += desc.length * 5;
     if (detail.length) {
       doc.setFontSize(8.5);
@@ -116,9 +124,9 @@ export async function invoicePdf(inv: Invoice): Promise<Blob> {
     doc.text(val, R, y, { align: 'right' });
     y += 6;
   };
-  total('Subtotal', gbp(inv.subtotal));
-  if (inv.vatRate) total(`VAT at ${inv.vatRate}%`, gbp(inv.vat));
-  total('Total due', gbp(inv.total), true);
+  total('Subtotal', m(inv.subtotal));
+  if (inv.vatRate) total(`${taxName} at ${inv.vatRate}%`, m(inv.vat));
+  total('Total due', m(inv.total), true);
   doc.setFont('helvetica', 'normal');
   y += 6;
   if (f.payment) {

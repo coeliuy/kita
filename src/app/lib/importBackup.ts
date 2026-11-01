@@ -89,7 +89,7 @@ export function importBackup(raw: unknown, existing: KitaData, today: string, ne
     return {
       id: idFor(c.id), name: s(c.name).slice(0, 200) || 'Unnamed client', billing, rate: n(c.rate), fee: n(c.fee),
       included: n(c.included), startDate: start, endDate: isDate(c.endDate) ? c.endDate : null, archived: !!c.archived,
-      color, weekly: Math.max(0, n(c.weekly)), email: s(c.email), address: s(c.address), createdAt: n(c.createdAt) || Date.now(),
+      color, weekly: Math.max(0, n(c.weekly)), currency: /^[A-Z]{3}$/.test(s(c.currency)) ? s(c.currency) : '', email: s(c.email), address: s(c.address), createdAt: n(c.createdAt) || Date.now(),
     };
   });
   const billingOf = new Map(rawClients.map(c => [idFor(c.id), s(c.billing)]));
@@ -147,6 +147,8 @@ export function importBackup(raw: unknown, existing: KitaData, today: string, ne
       // Older invoices may be marked paid without a date; the issue date is the best guess.
       paidDate: paid ? (isDate(i.paidDate) ? i.paidDate : i.issueDate) : null,
       note: s(i.note), entryIds: [], createdAt: n(i.createdAt) || Date.now(),
+      currency: /^[A-Z]{3}$/.test(s(i.currency)) ? s(i.currency) : '', fxRate: n(i.fxRate) > 0 ? n(i.fxRate) : null,
+      receivedHome: paid && i.receivedHome != null && n(i.receivedHome) >= 0 ? n(i.receivedHome) : null,
       from: isObj(i.from) ? { ...sender, ...(i.from as Obj) } as Invoice['from'] : sender,
     }];
   });
@@ -178,6 +180,9 @@ export function importBackup(raw: unknown, existing: KitaData, today: string, ne
     nextInv: Math.max(existing.settings.nextInv, Math.floor(n(ps.nextInv)) || 1),
     ...(terms && { terms }),
     vatRegistered: !!(ps.vatRegistered ?? ps.vat),
+    ...(['GB', 'PH', 'US', 'OTHER'].includes(s(ps.country)) && { country: s(ps.country) as Settings['country'] }),
+    ...(/^[A-Z]{3}$/.test(s(ps.currency)) && { currency: s(ps.currency) }),
+    ...(ps.setAside != null && { setAside: Math.min(100, Math.max(0, n(ps.setAside))) }),
     ...(ps.capacity != null && { capacity: Math.min(168, Math.max(0, n(ps.capacity))) }),
     ...(ps.invNotes != null && { invNotes: !!ps.invNotes }),
     ...(ps.vatRate != null && { vatRate: n(ps.vatRate) }),

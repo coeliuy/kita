@@ -6,6 +6,7 @@
  */
 export * from './types';
 export * from './money';
+export * from './currency';
 export * from './dates';
 export * from './duration';
 export * from './taxRates';

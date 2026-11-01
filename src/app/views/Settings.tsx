@@ -1,14 +1,15 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { ratesForTaxYear, taxYearLabel, taxYearOf, type PaymentTerms } from '../../lib/money';
+import { CURRENCIES, currencySymbol, ratesForTaxYear, taxYearLabel, taxYearOf, type PaymentTerms } from '../../lib/money';
 import { ConfirmButton, NumberField, TaxYearSelect } from '../components/ui';
 import { download, entriesCsv } from '../lib/files';
-import { today, uid } from '../lib/format';
+import { fmtDate, today, uid } from '../lib/format';
+import { COUNTRIES, countryInfo, region, yearSystem } from '../lib/region';
 import { importBackup, ImportError } from '../lib/importBackup';
 import { rememberTheme } from '../lib/theme';
 import { ratesFor, sortedCategories, yearSettings } from '../lib/selectors';
 import { SUGGESTED_CATEGORIES } from '../lib/tasks';
 import { useKita } from '../store/KitaProvider';
-import type { RateOverrides, Settings as SettingsT, Theme } from '../store/types';
+import type { Country, RateOverrides, Settings as SettingsT, Theme } from '../store/types';
 
 const RATE_FIELDS: [keyof RateOverrides, string, number][][] = [
   [['personalAllowance', 'Personal Allowance (£)', 1], ['basicRateBand', 'Basic rate band (£)', 1], ['additionalRateThreshold', 'Additional rate starts (£)', 1], ['allowanceTaperThreshold', 'Allowance tapers above (£)', 1]],
@@ -24,6 +25,74 @@ function Text({ k, label, type = 'text', area }: { k: keyof SettingsT; label: st
     <label className="f"><span>{label}</span>
       {area ? <textarea value={value} onChange={e => onChange(e.target.value)} /> : <input type={type} value={value} onChange={e => onChange(e.target.value)} />}
     </label>
+  );
+}
+
+/** Country, home currency, tax set-aside and exchange rates. */
+function Region() {
+  const { data, updateSettings } = useKita();
+  const s = data.settings;
+  const reg = region(data);
+  const home = s.currency || 'GBP';
+  const hasData = data.clients.length + data.invoices.length + data.expenses.length > 0;
+  const [rateFor, setRateFor] = useState('');
+  // Only the currencies you bill in (Kita fetches more than that, ready for new clients).
+  const others = [...new Set([...data.clients.map(c => c.currency), ...data.invoices.map(i => i.currency)])].filter(c => c && c !== home).sort();
+  const setCountry = (code: Country) => {
+    const info = countryInfo(code);
+    // A new account takes the country's currency; an existing one keeps its own, as amounts aren't converted.
+    updateSettings(hasData ? { country: code } : { country: code, currency: info.currency, fxRates: {} });
+  };
+  const setRate = (code: string, rate: number) =>
+    updateSettings({ fxRates: { ...s.fxRates, [code]: { rate, date: today() } } });
+  return (
+    <section>
+      <div className="head"><h2>Where you’re based</h2></div>
+      <div className="grid">
+        <label className="f"><span>Country</span>
+          <select value={s.country || ''} onChange={e => setCountry(e.target.value as Country)}>
+            {!s.country && <option value="">Choose…</option>}
+            {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </select>
+        </label>
+        <label className="f"><span>Your currency</span>
+          <select value={home} onChange={e => updateSettings({ currency: e.target.value, fxRates: {} })}>
+            {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.name} ({currencySymbol(c.code)})</option>)}
+          </select>
+        </label>
+        {reg.tax !== 'uk' && (
+          <NumberField label="Share of profit to set aside for tax (%)" value={s.setAside} step={1} placeholder="25"
+            onChange={v => updateSettings({ setAside: Math.min(100, Math.max(0, v || 0)) })} />
+        )}
+      </div>
+      <p className="fine" style={{ marginTop: 10 }}>
+        {reg.tax === 'uk'
+          ? 'Kita estimates UK Income Tax and National Insurance for tax years running 6 April to 5 April.'
+          : `Years run January to December. Kita doesn’t calculate ${reg.code === 'OTHER' ? 'your country’s' : reg.code === 'US' ? 'US' : 'Philippine'} tax yet, so it puts aside the share you choose.`}
+        {hasData && ' Changing your currency doesn’t convert amounts you’ve already entered.'}
+      </p>
+      <h3 style={{ margin: '18px 0 6px' }}>Exchange rates</h3>
+      {others.length ? (
+        <div className="stack" style={{ maxWidth: 520 }}>
+          {others.map(code => {
+            const r = s.fxRates[code];
+            return (
+              <div key={code} className="kv" style={{ alignItems: 'center' }}>
+                <span>1 {code} = {r ? `${+r.rate.toPrecision(6)} ${home}` : 'no rate yet'}{r && <span className="muted"> · {fmtDate(r.date)}</span>}</span>
+                {rateFor === code ? (
+                  <input type="number" step="any" min="0" autoFocus style={{ width: 120 }} aria-label={`Exchange rate from ${code} to ${home}`} defaultValue={r?.rate ?? ''}
+                    onBlur={e => { if (+e.target.value > 0) setRate(code, +e.target.value); setRateFor(''); }}
+                    onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+                ) : <button className="btn link" onClick={() => setRateFor(code)}>Edit</button>}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+      <p className="fine" style={{ marginTop: 8 }}>
+        {others.length ? 'Kita updates these daily from a free public service, and uses them to estimate invoices in other currencies until they’re paid.' : 'When a client pays you in another currency, set it on the client and Kita will fetch the exchange rate.'}
+      </p>
+    </section>
   );
 }
 
@@ -112,7 +181,8 @@ export function Settings() {
     }
   };
   const s = data.settings;
-  const [ty, setTy] = useState(() => taxYearOf(today()));
+  const tax = region(data).salesTax;
+  const [ty, setTy] = useState(() => taxYearOf(today(), yearSystem(data)));
   const r = ratesFor(data, ty);
   const hmrc = ratesForTaxYear(ty).rates;
   const setRate = (k: keyof RateOverrides, v: number) => {
@@ -159,11 +229,12 @@ export function Settings() {
           <label className="check"><input type="checkbox" checked={s.invNotes} onChange={e => updateSettings({ invNotes: e.target.checked })} /> Show task names and notes under invoice lines</label>
         </div>
         <div className="row" style={{ marginTop: 12, alignItems: 'center' }}>
-          <label className="check"><input type="checkbox" checked={s.vatRegistered} onChange={e => updateSettings({ vatRegistered: e.target.checked })} /> I’m VAT registered</label>
-          {s.vatRegistered && <div style={{ maxWidth: 140 }}><NumberField label="VAT rate (%)" value={s.vatRate} onChange={v => updateSettings({ vatRate: v })} /></div>}
-          {s.vatRegistered && <div style={{ minWidth: 200 }}><Text k="vatNumber" label="VAT registration number" /></div>}
+          <label className="check"><input type="checkbox" checked={s.vatRegistered} onChange={e => updateSettings({ vatRegistered: e.target.checked })} /> {tax === 'VAT' ? 'I’m VAT registered' : 'I charge sales tax'}</label>
+          {s.vatRegistered && <div style={{ maxWidth: 140 }}><NumberField label={`${tax} rate (%)`} value={s.vatRate} onChange={v => updateSettings({ vatRate: v })} /></div>}
+          {s.vatRegistered && <div style={{ minWidth: 200 }}><Text k="vatNumber" label={tax === 'VAT' ? (region(data).code === 'GB' ? 'VAT registration number' : 'VAT registration number (TIN)') : 'Tax ID (optional)'} /></div>}
         </div>
       </section>
+      <Region />
       <Categories />
       <section>
         <div className="head"><h2>Planning</h2></div>
@@ -171,7 +242,7 @@ export function Settings() {
           <NumberField label="Hours you can work each week" value={s.capacity} step={0.5} placeholder="e.g. 30" onChange={v => updateSettings({ capacity: Math.min(168, v) })} />
         </div>
       </section>
-      <section>
+      {region(data).tax === 'uk' && <section>
         <div className="head">
           <h2>Tax rates</h2>
           <TaxYearSelect value={ty} onChange={setTy} />
@@ -189,7 +260,7 @@ export function Settings() {
           <p className="fine">You only need to change these if your situation differs from the standard rates. Kita adds HMRC’s new rates each April.</p>
           {r.overridden && <button className="btn sm" onClick={() => updateYear(ty, { rateOverrides: {} })}>Reset to HMRC rates</button>}
         </div>
-      </section>
+      </section>}
       <section>
         <div className="head"><h2>Appearance</h2></div>
         <label className="f" style={{ maxWidth: 220 }}><span>Theme</span>

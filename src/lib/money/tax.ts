@@ -69,6 +69,19 @@ export function estimateTax(profit: number, otherIncome: number, r: TaxYearRates
   return { incomeTax: it, class4NI: ni, total: roundPence(it + ni) };
 }
 
+/**
+ * For countries whose tax Kita doesn't calculate: set aside a fixed share of
+ * profit that the person chooses. Reported as income tax so the rest of the
+ * app can treat it like any other estimate.
+ */
+export function flatSetAside(profit: number, percent: number): TaxEstimate {
+  const total = roundPence(Math.max(0, profit) * Math.max(0, percent) / 100);
+  return { incomeTax: total, class4NI: 0, total };
+}
+
+/** Works out the tax on a year's profit. */
+export type TaxOf = (profit: number) => TaxEstimate;
+
 /** Share of income (0 to 1) to set aside for tax. */
 export function setAsideRate(income: number, tax: TaxEstimate): number {
   return income > 0 ? tax.total / income : 0;

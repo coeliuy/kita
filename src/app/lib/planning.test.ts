@@ -4,7 +4,7 @@ import { capacity, commitments, insights, whatIf } from './planning';
 const today = '2026-10-30';
 let n = 0;
 const client = (extra: Partial<Client>): Client => ({
-  id: `c${++n}`, name: `Client ${n}`, billing: 'hourly', rate: 50, fee: 0, included: 0, color: '#000000', weekly: 0,
+  id: `c${++n}`, name: `Client ${n}`, billing: 'hourly', rate: 50, fee: 0, included: 0, color: '#000000', weekly: 0, currency: '',
   email: '', address: '', createdAt: 0, ...extra,
 });
 const entry = (clientId: string, date: string, minutes: number, extra: Partial<TimeEntry> = {}): TimeEntry => ({

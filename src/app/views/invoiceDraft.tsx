@@ -6,7 +6,8 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import { blankLine, draftInvoiceLines, monthEnd, monthStart, type MonthKey } from '../../lib/money';
 import { thisMonth, today } from '../lib/format';
 import { invoiceDraftOptions } from '../lib/invoiceDetails';
-import { activeClients, clientById, entriesIn } from '../lib/selectors';
+import { homeCurrency } from '../lib/region';
+import { activeClients, clientById, entriesIn, fxRateFor } from '../lib/selectors';
 import { useRouter } from '../router';
 import { useKita, type NewInvoice } from '../store/KitaProvider';
 import type { KitaData } from '../store/types';
@@ -39,6 +40,13 @@ export function prefill(data: KitaData, clientId: string, month: MonthKey) {
   );
 }
 
+/** A new invoice uses its client's currency, with the last known exchange rate. */
+export function draftCurrency(data: KitaData, clientId: string): { currency: string; fxRate: number | null } {
+  const home = homeCurrency(data);
+  const currency = clientById(data, clientId)?.currency || home;
+  return { currency, fxRate: currency === home ? null : fxRateFor(data, currency) };
+}
+
 /** Start a new invoice (optionally for a client and month) and open the Invoices screen. */
 export function useInvoiceDraft() {
   const { data } = useKita();
@@ -47,7 +55,7 @@ export function useInvoiceDraft() {
   return useCallback((clientId: string | null, month?: MonthKey) => {
     const cid = clientId ?? activeClients(data)[0]?.id ?? '';
     const period = month ?? thisMonth();
-    setDraft({ clientId: cid, period, issueDate: today(), note: '', ...prefill(data, cid, period) });
+    setDraft({ clientId: cid, period, issueDate: today(), note: '', ...prefill(data, cid, period), ...draftCurrency(data, cid) });
     go('invoices');
   }, [data, setDraft, go]);
 }
