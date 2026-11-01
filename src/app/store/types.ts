@@ -50,6 +50,8 @@ export interface Invoice extends M.Invoice {
   clientAddress: string;
   clientEmail: string;
   note: string;
+  /** Terms and conditions printed on the invoice ('' = none). */
+  terms: string;
   entryIds: string[];
   from: InvoiceSender;
   createdAt: number;
@@ -126,6 +128,8 @@ export interface Settings {
   setAside: number;
   /** Last known exchange rates into the home currency, by currency code. */
   fxRates: Record<string, FxRate>;
+  /** Your usual invoice terms and conditions, filled in on new invoices. */
+  invTerms: string;
 }
 
 /** The numeric tax rate fields a user can override for a year. */
@@ -168,7 +172,7 @@ export interface KitaData {
 export const DEFAULT_SETTINGS: Settings = {
   name: '', business: '', address: '', email: '', payment: '', vatNumber: '',
   invPrefix: 'INV-', nextInv: 1, terms: '30', vatRegistered: false, vatRate: 20, theme: '',
-  capacity: 0, invNotes: true, hideSetup: false, country: '', currency: 'GBP', setAside: 25, fxRates: {},
+  capacity: 0, invNotes: true, hideSetup: false, country: '', currency: 'GBP', setAside: 25, fxRates: {}, invTerms: '',
 };
 
 export const DEFAULT_YEAR: YearSettings = { otherIncome: 0, goal: 0, goalType: 'gross', taxSaved: 0, rateOverrides: {} };

@@ -43,6 +43,19 @@ export function quartersCsv(d: KitaData, taxYear: number): { filename: string; t
 }
 
 /**
+ * The file name for an invoice PDF: "Business name - Oct-26 - INV-012.pdf".
+ * The month is the month the work was done in, or else the issue date's.
+ */
+export function invoiceFileName(inv: Invoice, fallbackName = ''): string {
+  // The name on the invoice, or your current one for invoices made before you added it.
+  const who = (inv.from.business || inv.from.name || fallbackName).trim();
+  const [y, m] = (inv.period || inv.issueDate).split('-');
+  const month = `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m! - 1]}-${y!.slice(2)}`;
+  const safe = (t: string) => t.replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim();
+  return `${[who, month, inv.number].filter(Boolean).map(safe).join(' - ')}.pdf`;
+}
+
+/**
  * An A4 invoice. Uses the details saved on the invoice when it was created.
  * The PDF library is large, so it's only downloaded the first time it's needed.
  */
@@ -138,6 +151,21 @@ export async function invoicePdf(inv: Invoice, taxName = 'VAT'): Promise<Blob> {
     y += 3;
   }
   if (inv.note) for (const l of doc.splitTextToSize(inv.note, 170) as string[]) { doc.text(l, L, y); y += 5; }
+  if (inv.terms) {
+    y += inv.note ? 5 : 0;
+    if (y > 260) { doc.addPage(); y = 24; }
+    doc.setTextColor(110);
+    doc.text('Terms and conditions', L, y);
+    y += 5;
+    doc.setFontSize(8.5);
+    for (const l of doc.splitTextToSize(inv.terms, 170) as string[]) {
+      if (y > 280) { doc.addPage(); y = 24; }
+      doc.text(l, L, y);
+      y += 4;
+    }
+    doc.setFontSize(10);
+    doc.setTextColor(20);
+  }
   return doc.output('blob');
 }
 

@@ -23,7 +23,7 @@ describe('database row conversion', () => {
       id: 'i1', number: 'INV-001', clientId: 'c1', clientName: 'Northlight', clientAddress: '1 Road', clientEmail: 'a@b.c',
       period: '2026-10', issueDate: '2026-10-31', dueDate: '2026-11-30',
       lines: [{ desc: 'Retainer', qty: 1, unit: 1200, kind: 'retainer_fee' }],
-      subtotal: 1200, vatRate: 20, vat: 240, total: 1440, status: 'paid', paidDate: '2026-11-10', note: 'Thanks',
+      subtotal: 1200, vatRate: 20, vat: 240, total: 1440, status: 'paid', paidDate: '2026-11-10', note: 'Thanks', terms: 'Late payment fee applies',
       entryIds: ['e1'], createdAt, demo: false, currency: 'USD', fxRate: 0.79, receivedHome: 1100,
       from: { name: 'Me', business: 'Biz', address: 'Addr', email: 'me@x.y', payment: 'Bank', vatNumber: 'GB123' },
     };

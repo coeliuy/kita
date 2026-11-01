@@ -146,7 +146,7 @@ export function importBackup(raw: unknown, existing: KitaData, today: string, ne
       status: paid ? 'paid' : 'unpaid',
       // Older invoices may be marked paid without a date; the issue date is the best guess.
       paidDate: paid ? (isDate(i.paidDate) ? i.paidDate : i.issueDate) : null,
-      note: s(i.note), entryIds: [], createdAt: n(i.createdAt) || Date.now(),
+      note: s(i.note), terms: s(i.terms), entryIds: [], createdAt: n(i.createdAt) || Date.now(),
       currency: /^[A-Z]{3}$/.test(s(i.currency)) ? s(i.currency) : '', fxRate: n(i.fxRate) > 0 ? n(i.fxRate) : null,
       receivedHome: paid && i.receivedHome != null && n(i.receivedHome) >= 0 ? n(i.receivedHome) : null,
       from: isObj(i.from) ? { ...sender, ...(i.from as Obj) } as Invoice['from'] : sender,
@@ -186,6 +186,7 @@ export function importBackup(raw: unknown, existing: KitaData, today: string, ne
     ...(ps.capacity != null && { capacity: Math.min(168, Math.max(0, n(ps.capacity))) }),
     ...(ps.invNotes != null && { invNotes: !!ps.invNotes }),
     ...(ps.vatRate != null && { vatRate: n(ps.vatRate) }),
+    ...(ps.invTerms != null && { invTerms: s(ps.invTerms) }),
   };
 
   const years: ImportResult['years'] = [];

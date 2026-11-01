@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { CURRENCIES, currencySymbol, ratesForTaxYear, taxYearLabel, taxYearOf, type PaymentTerms } from '../../lib/money';
+import { ImportInvoices } from '../components/ImportInvoices';
 import { ConfirmButton, NumberField, TaxYearSelect } from '../components/ui';
 import { download, entriesCsv } from '../lib/files';
 import { fmtDate, today, uid } from '../lib/format';
@@ -225,6 +226,7 @@ export function Settings() {
             </select>
           </label>
         </div>
+        <div style={{ marginTop: 12 }}><Text k="invTerms" label="Terms and conditions for new invoices (optional)" area /></div>
         <div className="row" style={{ marginTop: 12, alignItems: 'center' }}>
           <label className="check"><input type="checkbox" checked={s.invNotes} onChange={e => updateSettings({ invNotes: e.target.checked })} /> Show task names and notes under invoice lines</label>
         </div>
@@ -282,6 +284,8 @@ export function Settings() {
           <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={e => onImport(e.target.files?.[0])} />
           <p className="fine">Bring in a “Download everything” file, including one from the earlier single-page version of Kita. It adds to what’s here and doesn’t replace anything.</p>
         </div>
+        <div style={{ marginTop: 16 }}><ImportInvoices compact /></div>
+        <p className="fine" style={{ marginTop: 6 }}>Past invoices or earnings from a spreadsheet saved as CSV: you’ll see what Kita found before anything is added.</p>
         <div className="row" style={{ marginTop: 16 }}>
           {data.clients.some(c => c.demo)
             ? <button className="btn" onClick={async () => { await clearData(true); toast('Demo data removed'); }}>Remove demo data</button>

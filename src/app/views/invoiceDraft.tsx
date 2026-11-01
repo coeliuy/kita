@@ -55,7 +55,7 @@ export function useInvoiceDraft() {
   return useCallback((clientId: string | null, month?: MonthKey) => {
     const cid = clientId ?? activeClients(data)[0]?.id ?? '';
     const period = month ?? thisMonth();
-    setDraft({ clientId: cid, period, issueDate: today(), note: '', ...prefill(data, cid, period), ...draftCurrency(data, cid) });
+    setDraft({ clientId: cid, period, issueDate: today(), note: '', terms: data.settings.invTerms, number: '', dueDate: null, ...prefill(data, cid, period), ...draftCurrency(data, cid) });
     go('invoices');
   }, [data, setDraft, go]);
 }

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { blankLine, CURRENCIES, currencySymbol, dueDate, inHome, invoiceTotals, isForeign, isOverdue, lineAmount, monthLabel, shiftMonth, sumPounds } from '../../lib/money';
 import { RowMenu } from '../components/RowMenu';
 import { ClientOptions, plural } from '../components/ui';
-import { download, invoicePdf } from '../lib/files';
+import { ImportInvoices } from '../components/ImportInvoices';
+import { download, invoiceFileName, invoicePdf } from '../lib/files';
 import { fmtDate, homeCurrencyCode, homeSymbol, money, money0, padInvoiceNumber, thisMonth, today } from '../lib/format';
 import { homeCurrency, region } from '../lib/region';
 import { activeClients, clientById, fxRateFor } from '../lib/selectors';
@@ -45,7 +46,12 @@ function InvoiceBuilder() {
   const foreign = cur !== home;
   const setCurrency = (code: string) => setDraft({ ...draft, currency: code, fxRate: code === home ? null : fxRateFor(data, code) });
 
+  const autoNumber = `${s.invPrefix}${padInvoiceNumber(s.nextInv)}`;
+  const due = draft.dueDate ?? dueDate(draft.issueDate, s.terms);
   const save = async () => {
+    const num = draft.number.trim();
+    if (num && data.invoices.some(i => i.number === num)) { toast(`You’ve already used ${num}. Each invoice needs its own number.`); return; }
+    if (due < draft.issueDate) { toast('The due date can’t be before the issue date.'); return; }
     if (foreign && !(draft.fxRate && draft.fxRate > 0)) { toast(`Enter the exchange rate from ${cur} to ${home}.`); return; }
     setSaving(true);
     const inv = await createInvoice(draft);
@@ -59,7 +65,7 @@ function InvoiceBuilder() {
 
   return (
     <section>
-      <div className="head"><h1>New invoice</h1><span className="sub">{s.invPrefix}{padInvoiceNumber(s.nextInv)}</span></div>
+      <div className="head"><h1>New invoice</h1><span className="sub">{draft.number.trim() || autoNumber}</span></div>
       <div className="panel stack">
         <div className="grid">
           <label className="f"><span>Client</span><select value={draft.clientId} onChange={e => refill(e.target.value, draft.period)}><ClientOptions /></select></label>
@@ -68,7 +74,9 @@ function InvoiceBuilder() {
               {months.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
             </select>
           </label>
+          <label className="f"><span>Invoice number</span><input value={draft.number} placeholder={autoNumber} onChange={e => setDraft({ ...draft, number: e.target.value })} /></label>
           <label className="f"><span>Issue date</span><input type="date" value={draft.issueDate} onChange={e => setDraft({ ...draft, issueDate: e.target.value || today() })} /></label>
+          <label className="f"><span>Due date</span><input type="date" value={due} min={draft.issueDate} onChange={e => setDraft({ ...draft, dueDate: e.target.value || null })} /></label>
           <label className="f"><span>Currency</span>
             <select value={cur} onChange={e => setCurrency(e.target.value)}>
               {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} · {c.name}</option>)}
@@ -116,8 +124,15 @@ function InvoiceBuilder() {
           </table>
         </div>
         <div><button className="btn sm" onClick={() => setDraft({ ...draft, lines: [...draft.lines, blankLine()] })}>Add line</button></div>
-        <Totals {...totals} vatRate={vatRate} due={dueDate(draft.issueDate, s.terms)} currency={cur} fxRate={foreign ? draft.fxRate : null} taxName={region(data).salesTax} />
+        <Totals {...totals} vatRate={vatRate} due={due} currency={cur} fxRate={foreign ? draft.fxRate : null} taxName={region(data).salesTax} />
         <label className="f"><span>Note on invoice (optional)</span><input value={draft.note} placeholder="Thank you for your business" onChange={e => setDraft({ ...draft, note: e.target.value })} /></label>
+        <label className="f"><span>Terms and conditions (optional)</span>
+          <textarea value={draft.terms} rows={3} placeholder="e.g. Payment due within 30 days. Late payments may be charged interest."
+            onChange={e => setDraft({ ...draft, terms: e.target.value })} />
+        </label>
+        {draft.terms.trim() !== s.invTerms.trim() && draft.terms.trim() && (
+          <button className="btn link pop" style={{ alignSelf: 'flex-start' }} onClick={() => { updateSettings({ invTerms: draft.terms.trim() }); toast('Saved. New invoices will start with these terms.'); }}>Use these terms on every new invoice</button>
+        )}
         {s.vatRegistered && !s.vatNumber && region(data).code === 'GB' && <div className="callout">Add your VAT registration number in Settings. UK VAT invoices need to show it.</div>}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button className="btn link" onClick={() => setDraft(null)}>Cancel</button>
@@ -197,7 +212,7 @@ export function Invoices() {
                       <PaidControl inv={i} />{' '}
                       <RowMenu label={`More actions for ${i.number}`} items={[
                         { label: 'Download PDF', run: async () => {
-                          try { download(`${i.number}.pdf`, await invoicePdf(i, region(data).salesTax)); }
+                          try { download(invoiceFileName(i, data.settings.business || data.settings.name), await invoicePdf(i, region(data).salesTax)); }
                           catch { toast('The PDF couldn’t be made. Check your connection and try again.'); }
                         } },
                         i.status === 'paid' && { label: 'Mark unpaid', run: () => markUnpaid(i.id) },
@@ -210,6 +225,10 @@ export function Invoices() {
             </table>
           </div>
         ) : <div className="empty">No invoices yet. Kita fills them in from your tracked time.</div>}
+      </section>
+      <section>
+        <div className="head"><h2>Bring in past invoices</h2></div>
+        <ImportInvoices />
       </section>
     </>
   );

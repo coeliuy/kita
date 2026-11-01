@@ -40,7 +40,7 @@ export const invoiceToRow = (i: Invoice): Row => ({
   id: i.id, number: i.number, client_id: i.clientId || null, client_name: i.clientName, client_address: i.clientAddress,
   client_email: i.clientEmail, sender: i.from, period: i.period, issue_date: i.issueDate, due_date: i.dueDate,
   lines: i.lines, subtotal: i.subtotal, vat_rate: i.vatRate, vat: i.vat, total: i.total, status: i.status,
-  paid_date: i.status === 'paid' ? i.paidDate ?? null : null, note: i.note, entry_ids: i.entryIds,
+  paid_date: i.status === 'paid' ? i.paidDate ?? null : null, note: i.note, terms: i.terms || '', entry_ids: i.entryIds,
   currency: i.currency || '', fx_rate: i.fxRate ?? null, received_home: i.status === 'paid' ? i.receivedHome ?? null : null,
   demo: !!i.demo, created_at: iso(i.createdAt),
 });
@@ -51,7 +51,7 @@ export const invoiceFromRow = (r: Row): Invoice => ({
   period: (r.period as string) ?? null, issueDate: str(r.issue_date), dueDate: str(r.due_date),
   lines: ((r.lines as Invoice['lines']) ?? []).map(l => ({ ...l, qty: num(l.qty), unit: num(l.unit) })),
   subtotal: num(r.subtotal), vatRate: num(r.vat_rate), vat: num(r.vat), total: num(r.total),
-  status: r.status === 'paid' ? 'paid' : 'unpaid', paidDate: (r.paid_date as string) ?? null, note: str(r.note),
+  status: r.status === 'paid' ? 'paid' : 'unpaid', paidDate: (r.paid_date as string) ?? null, note: str(r.note), terms: str(r.terms),
   entryIds: (r.entry_ids as string[]) ?? [], demo: !!r.demo, createdAt: Date.parse(str(r.created_at)) || 0,
   currency: str(r.currency), fxRate: r.fx_rate == null ? null : num(r.fx_rate),
   receivedHome: r.received_home == null ? null : num(r.received_home),
@@ -70,7 +70,7 @@ export const settingsToRow = (s: Settings): Row => ({
   name: s.name, business: s.business, address: s.address, email: s.email, payment: s.payment, vat_number: s.vatNumber,
   inv_prefix: s.invPrefix, next_inv: s.nextInv, terms: s.terms, vat_registered: s.vatRegistered, vat_rate: s.vatRate,
   theme: s.theme, capacity: s.capacity || 0, inv_notes: s.invNotes, hide_setup: s.hideSetup,
-  country: s.country, currency: s.currency, set_aside: s.setAside, fx_rates: s.fxRates, updated_at: new Date().toISOString(),
+  country: s.country, currency: s.currency, set_aside: s.setAside, fx_rates: s.fxRates, inv_terms: s.invTerms || '', updated_at: new Date().toISOString(),
 });
 export const settingsFromRow = (r: Row): Partial<Settings> => ({
   name: str(r.name), business: str(r.business), address: str(r.address), email: str(r.email), payment: str(r.payment),
@@ -78,7 +78,7 @@ export const settingsFromRow = (r: Row): Partial<Settings> => ({
   terms: r.terms as Settings['terms'], vatRegistered: !!r.vat_registered, vatRate: num(r.vat_rate),
   theme: (r.theme as Settings['theme']) ?? '', capacity: num(r.capacity), invNotes: r.inv_notes !== false,
   hideSetup: !!r.hide_setup, country: (r.country as Settings['country']) ?? '', currency: str(r.currency) || 'GBP',
-  setAside: r.set_aside == null ? 25 : num(r.set_aside), fxRates: (r.fx_rates as Settings['fxRates']) ?? {},
+  setAside: r.set_aside == null ? 25 : num(r.set_aside), fxRates: (r.fx_rates as Settings['fxRates']) ?? {}, invTerms: str(r.inv_terms),
 });
 
 export const yearToRow = (taxYear: number, y: YearSettings): Row => ({

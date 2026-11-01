@@ -77,7 +77,7 @@ describe('clients and invoices in other currencies', () => {
     d.invoices = [{
       id: 'i', number: 'INV-001', clientId: 'u', clientName: 'Acme Inc', clientEmail: '', clientAddress: '', period: '2026-10',
       issueDate: '2026-10-31', dueDate: '2026-11-14', lines: [{ desc: 'Work', qty: 2, unit: 50, kind: 'time' }], subtotal: 100, vatRate: 0, vat: 0, total: 100,
-      status: 'paid', paidDate: '2026-11-01', entryIds: [], currency: 'USD', fxRate: 56, receivedHome: 5500,
+      status: 'paid', paidDate: '2026-11-01', terms: '', entryIds: [], currency: 'USD', fxRate: 56, receivedHome: 5500,
       from: { name: '', business: '', email: '', address: '', payment: '', vatNumber: '' }, note: '', createdAt: 0,
     }];
     const y = yearSummary(d, 2026, '2026-11-01');

@@ -124,7 +124,7 @@ export function buildDemoData(today: ISODate, existingCategories: Category[] = [
     invoices.push({
       id, clientId: c.id, clientName: c.name, clientAddress: '', clientEmail: '', period: prev, issueDate,
       dueDate: dueDate(issueDate, '30'), lines: draft.lines, vatRate: 0, ...invoiceTotals(draft.lines, 0),
-      status: paid ? 'paid' : 'unpaid', paidDate: paid ? (paidOn < today ? paidOn : today) : null, note: '',
+      status: paid ? 'paid' : 'unpaid', paidDate: paid ? (paidOn < today ? paidOn : today) : null, note: '', terms: '',
       entryIds: draft.entryIds, createdAt: now, demo: true, currency: '', fxRate: null, receivedHome: null,
       from: { name: '', business: '', address: '', email: '', payment: '', vatNumber: '' },
     });

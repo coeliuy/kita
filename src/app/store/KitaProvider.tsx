@@ -27,6 +27,12 @@ export interface NewInvoice {
   issueDate: ISODate;
   lines: InvoiceLine[];
   note: string;
+  /** Terms and conditions to print ('' = none). */
+  terms: string;
+  /** A number you chose ('' = the next number automatically). */
+  number: string;
+  /** A due date you chose (null = from your payment terms). */
+  dueDate: ISODate | null;
   entryIds: string[];
   /** '' = home currency. */
   currency: string;
@@ -353,22 +359,31 @@ export function KitaProvider({ store, account = null, children }: { store: KitaS
         const s = d.settings;
         const vatRate = s.vatRegistered ? +s.vatRate || 0 : 0;
         const totals = invoiceTotals(lines, vatRate);
-        let number: string;
-        try {
-          number = await store.takeInvoiceNumber();
-        } catch (e) {
-          failed(e);
-          return null;
+        let number = draft.number.trim();
+        if (number) {
+          // A number typed by hand. If it carries on your numbering (e.g. INV-050), the next one follows it.
+          const m = number.startsWith(s.invPrefix) ? /^(\d+)$/.exec(number.slice(s.invPrefix.length)) : null;
+          if (m && +m[1]! >= (+s.nextInv || 1)) {
+            commit({ ...cur(), settings: { ...cur().settings, nextInv: +m[1]! + 1 } });
+            later('settings', () => save(store.saveSettings(cur().settings)));
+          }
+        } else {
+          try {
+            number = await store.takeInvoiceNumber();
+          } catch (e) {
+            failed(e);
+            return null;
+          }
+          commit({ ...cur(), settings: { ...cur().settings, nextInv: (+s.nextInv || 1) + 1 } });
         }
         const invoice: Invoice = {
           id: uid(), number, clientId: client.id, clientName: client.name, clientAddress: client.address,
           clientEmail: client.email, period: draft.period, issueDate: draft.issueDate,
-          dueDate: dueDate(draft.issueDate, s.terms), lines, vatRate, ...totals, status: 'unpaid', paidDate: null,
-          note: draft.note.trim(), entryIds: draft.entryIds, createdAt: Date.now(),
+          dueDate: draft.dueDate && draft.dueDate >= draft.issueDate ? draft.dueDate : dueDate(draft.issueDate, s.terms), lines, vatRate, ...totals, status: 'unpaid', paidDate: null,
+          note: draft.note.trim(), terms: draft.terms.trim(), entryIds: draft.entryIds, createdAt: Date.now(),
           ...invoiceCurrency(draft, s.currency),
           from: { name: s.name, business: s.business, address: s.address, email: s.email, payment: s.payment, vatNumber: s.vatRegistered ? s.vatNumber : '' },
         };
-        commit({ ...cur(), settings: { ...cur().settings, nextInv: (+s.nextInv || 1) + 1 } });
         await upsert('invoices', [invoice]);
         const linked = cur().entries.filter(e => draft.entryIds.includes(e.id)).map(e => ({ ...e, invoiceId: invoice.id }));
         if (linked.length) await upsert('entries', linked);
