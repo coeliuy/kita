@@ -14,7 +14,7 @@
 </head>
 <body class="home">
 <!-- The public homepage. Edit the wording here; the app itself lives in /app. -->
-<header class="l-top"><a class="brand" href="/"><svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="var(--accent)"/><path d="M9 6.5v11M9 12.2l5.8-5.2M10.7 10.8l4.6 6.5" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>Kita</a><div class="row" style="align-items:center"><button class="ibtn theme-toggle" id="themeToggle" aria-label="Switch between light and dark mode"><svg class="i icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="i icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg></button><a class="btn link" href="/app/">Sign in</a><a class="btn primary" href="/app/?signup">Get started</a></div></header>
+<header class="l-top"><a class="brand" href="/"><svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="var(--accent)"/><path d="M9 6.5v11M9 12.2l5.8-5.2M10.7 10.8l4.6 6.5" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>Kita</a><div class="row" style="align-items:center"><button class="ibtn theme-toggle" id="themeToggle" aria-label="Switch between light and dark mode"><svg class="i icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg><svg class="i icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg></button><nav class="l-nav" aria-label="Homepage"><a href="#tour">Tour</a><a href="#features">Features</a><a href="#how">How it works</a><a href="#faq">Questions</a></nav><a class="btn link" href="/app/">Sign in</a><a class="btn primary" href="/app/?signup">Get started</a></div></header>
 <div class="l-wrap">
   <section class="l-hero">
     <div>
@@ -33,11 +33,42 @@
       <p class="src"><sup>1</sup> Poll of 500 self-employed people and small business owners, reported by the Yorkshire Post. <sup>2</sup> The Accountancy Partnership, survey of 1,060 UK freelancers and self-employed professionals, 2026.</p>
     </div>
   </section>
+  <section class="l-sec tour" id="tour">
+    <p class="eyebrow">A look inside</p>
+    <h2>From the first hour to what you take home.</h2>
+    <div class="show">
+      <div class="show-text">
+        <h3>Your day, at a glance</h3>
+        <p>Today shows the tasks due, the hours you’ve tracked this week and what clients owe you. Press play on a task and the timer keeps running even if you close the tab.</p>
+      </div>
+      <figure class="frame"><div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+        <img class="shot-light" src="/screens/today-light.jpg" alt="Kita’s Today screen: a greeting, tasks due today with progress against their estimates, and this week’s hours and unpaid invoices" width="1280" height="800" loading="lazy">
+        <img class="shot-dark" src="/screens/today-dark.jpg" alt="" width="1280" height="800" loading="lazy">
+      </figure>
+    </div>
+    <div class="show flip">
+      <div class="show-text">
+        <h3>Invoices that write themselves</h3>
+        <p>At the end of the month, Kita turns your tracked time into an invoice, grouped by the kind of work, with your details, payment terms and a tidy PDF ready to send.</p>
+      </div>
+      <figure class="frame paper"><img src="/screens/invoice.jpg" alt="An invoice made by Kita: content writing and strategy calls for September, with hours, rates, total due, payment details and terms" width="1240" height="1000" loading="lazy"></figure>
+    </div>
+    <div class="show">
+      <div class="show-text">
+        <h3>Know what you keep</h3>
+        <p>Money shows what you’ve been paid this tax year, an estimate of the tax and National Insurance on it, the share to set aside from every payment, and how you’re doing against your goal.</p>
+      </div>
+      <figure class="frame"><div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+        <img class="shot-light" src="/screens/money-light.jpg" alt="Kita’s Money screen: income received, expenses, profit, estimated tax and take-home, and the share of each payment to set aside" width="1280" height="800" loading="lazy">
+        <img class="shot-dark" src="/screens/money-dark.jpg" alt="" width="1280" height="800" loading="lazy">
+      </figure>
+    </div>
+  </section>
   <section class="l-sec meaning">
     <div class="word">Kita</div>
     <div><h2>Kita is Filipino for earnings.</h2><p class="intro">It also means “to see”. That’s the idea behind the app: see where your time goes, and see what it’s really worth once expenses and tax come out.</p></div>
   </section>
-  <section class="l-sec">
+  <section class="l-sec" id="features">
     <h2>Most time trackers stop at the timesheet.</h2>
     <p class="intro">The harder part of freelancing comes after. A retainer quietly runs over. An invoice slips past its due date. January arrives with a tax bill bigger than you planned for. Kita connects your hours to the money side, so none of that takes you by surprise.</p>
     <div class="feat">
@@ -63,7 +94,17 @@
       <li><div><h3>Keep an eye on your money</h3><p>Log expenses as they happen, add any salary, set a goal for the year and move the suggested amount into your tax savings.</p></div></li>
     </ol>
   </section>
-  <section class="l-sec">
+  <section class="l-sec founder">
+    <p class="eyebrow">Who’s behind Kita</p>
+    <blockquote>
+      <p>“I’m a freelance marketer in the UK, and I got tired of spreadsheets. My hours lived in one app, my invoices in another, and my tax estimate in a spreadsheet I never quite trusted. Kita is the tool I wanted: one place that follows the work all the way to what I actually keep.”</p>
+      <footer>
+        <span class="avatar" aria-hidden="true">K</span>
+        <span><b>The founder of Kita</b><br><span class="muted">Freelance marketer, UK. Questions or ideas? <a href="mailto:coeli@dahildigital.com">Email me</a>.</span></span>
+      </footer>
+    </blockquote>
+  </section>
+  <section class="l-sec" id="faq">
     <h2>Questions</h2>
     <div class="faq">
       <details><summary>Where is my data kept?</summary><p>Your clients, tasks, time and invoices are private to your account. You can download everything as a backup from Settings at any time.</p></details>
@@ -75,10 +116,38 @@
     </div>
   </section>
   <section class="cta">
-    <h2>Start with this week’s hours.</h2>
-    <div class="row"><a class="btn primary lg" href="/app/?signup">Get started</a></div>
+    <div>
+      <h2>Start with this week’s hours.</h2>
+      <p class="intro">Free during the early preview. Set up in ten minutes.</p>
+      <div class="row" style="margin-top:24px"><a class="btn primary lg" href="/app/?signup">Get started</a></div>
+    </div>
+    <form class="subscribe" id="subscribe" novalidate>
+      <h3>Not ready yet?</h3>
+      <p>Get an email when new features land and when Kita launches properly. A few emails a year, nothing else.</p>
+      <div class="sub-row">
+        <label class="sr" for="sub-email">Email address</label>
+        <input id="sub-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+        <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <button class="btn secondary" type="submit">Keep me posted</button>
+      </div>
+      <p class="sub-msg" role="status" aria-live="polite"></p>
+      <p class="fine">Unsubscribe any time by replying to any email. See the <a href="/privacy">privacy notice</a>.</p>
+    </form>
   </section>
-  <footer class="l-foot">Kita is an early preview, built in the UK. Tax figures are estimates, not financial advice. <a href="/privacy">Privacy</a></footer>
 </div>
+<footer class="site-foot">
+  <div class="l-wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="brand" href="/"><svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="var(--accent)"/><path d="M9 6.5v11M9 12.2l5.8-5.2M10.7 10.8l4.6 6.5" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>Kita</a>
+        <p class="muted" style="margin-top:10px;max-width:34ch">Time tracking that follows your work all the way to what you keep. Built in the UK.</p>
+      </div>
+      <div><h4>Product</h4><a href="#tour">Tour</a><a href="#features">Features</a><a href="#how">How it works</a><a href="/app/?demo">Try the demo</a></div>
+      <div><h4>Account</h4><a href="/app/?signup">Get started</a><a href="/app/">Sign in</a></div>
+      <div><h4>Kita</h4><a href="/privacy">Privacy</a><a href="mailto:coeli@dahildigital.com">Contact</a></div>
+    </div>
+    <p class="fine foot-note">Kita is an early preview. Tax figures are estimates, not financial advice.</p>
+  </div>
+</footer>
 </body>
 </html>

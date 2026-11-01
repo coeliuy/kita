@@ -8,10 +8,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-const URL = import.meta.env.VITE_SUPABASE_URL ?? 'https://xblcblduzhheuualebpj.supabase.co';
-const ANON_KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ??
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhibGNibGR1emhoZXV1YWxlYnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNjk5MzQsImV4cCI6MjEwODk0NTkzNH0.V35HHrUXQWSBCJGEPoWb8F73m3ZT-AtXmtpEaGgrMhk';
+import { SUPABASE_ANON_KEY as ANON_KEY, SUPABASE_URL as URL } from './supabaseConfig';
 
 /** Null when accounts are switched off (the app then uses browser storage). */
 export const supabase = URL === 'off' ? null : createClient(URL, ANON_KEY);

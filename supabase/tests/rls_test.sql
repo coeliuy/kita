@@ -152,6 +152,29 @@ exception when insufficient_privilege then raise notice 'ok: signed-out visitors
 end $$;
 reset role;
 
+-- Mailing list: visitors can join but not read, and joining twice is quiet
+reset role;
+set role anon;
+select public.subscribe('Sam@Example.com', 'homepage');
+select public.subscribe('sam@example.com', 'homepage');
+do $$ begin
+  perform count(*) from public.subscribers;
+  raise exception 'FAILED: a visitor could read the mailing list';
+exception when insufficient_privilege then raise notice 'ok: visitors can join the list but not read it';
+end $$;
+do $$ begin
+  insert into public.subscribers (email) values ('direct@example.com');
+  raise exception 'FAILED: a visitor wrote to the list directly';
+exception when insufficient_privilege then raise notice 'ok: the list only takes emails through subscribe()';
+end $$;
+do $$ begin
+  perform public.subscribe('not an email', 'homepage');
+  raise exception 'FAILED: an invalid email was accepted';
+exception when check_violation then raise notice 'ok: invalid emails are refused';
+end $$;
+reset role;
+select pg_temp.check((select count(*) from public.subscribers) = 1, 'the same email is only listed once');
+
 -- Every table in the public schema has RLS switched on
 select pg_temp.check(
   not exists (select 1 from pg_tables where schemaname = 'public' and not rowsecurity),
