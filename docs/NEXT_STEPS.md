@@ -7,13 +7,10 @@ left, saved for later. "You" means Coeli; "Claude" means the coding assistant.
 ## Before friends test it (checklist)
 
 Must do:
-1. **Email sending (you, ~20 minutes).** Supabase's built-in email only reaches addresses in your
-   Supabase team, a few per hour, so friends won't get their confirmation emails. Set up a free
-   Resend account, verify a domain you own, and enter its SMTP details in
-   **Supabase -> Authentication -> Emails -> SMTP settings**.
+1. **Email sending: done.** Resend, sending from send.dahildigital.com (DNS on WordPress.com),
+   connected in Supabase -> Authentication -> Emails -> SMTP settings.
 2. **Privacy notice: live at /privacy (privacy.html).** Run by Kita App, contact
-   coeli@dahildigital.com. Name the email provider once it's set up, and have it checked
-   before a public launch.
+   coeli@dahildigital.com, names Resend. Have it checked before a public launch.
 3. **Delete my account: built** (Settings -> Your account). Needs migration 0003.
 4. **Send feedback: built** (sidebar, More, and the box saves to the `feedback` table, which you
    read in Supabase -> Table Editor -> feedback). Needs migration 0003.
