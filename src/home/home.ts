@@ -49,3 +49,38 @@ form?.addEventListener('submit', async e => {
     button.disabled = false;
   }
 });
+
+/** "Product" dropdown in the menu: opens on click, closes on Escape, outside clicks or choosing a link. */
+const ddBtn = document.querySelector<HTMLButtonElement>('.dd-btn');
+const ddMenu = document.querySelector<HTMLElement>('.dd-menu');
+const setDd = (open: boolean) => { ddBtn?.setAttribute('aria-expanded', String(open)); ddMenu?.classList.toggle('open', open); };
+ddBtn?.addEventListener('click', e => { e.stopPropagation(); setDd(ddBtn.getAttribute('aria-expanded') !== 'true'); });
+ddMenu?.addEventListener('click', e => { if ((e.target as HTMLElement).closest('a')) setDd(false); });
+document.addEventListener('click', e => { if (!(e.target as HTMLElement).closest('.dd')) setDd(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && ddBtn?.getAttribute('aria-expanded') === 'true') { setDd(false); ddBtn.focus(); } });
+
+/** "One app. Every way you bill." tabs, with arrow-key support. */
+const tabs = [...document.querySelectorAll<HTMLButtonElement>('.tabs [role=tab]')];
+const select = (tab: HTMLButtonElement, focus = false) => {
+  for (const t of tabs) {
+    const on = t === tab;
+    t.setAttribute('aria-selected', String(on));
+    t.tabIndex = on ? 0 : -1;
+    document.getElementById(t.getAttribute('aria-controls')!)!.hidden = !on;
+  }
+  if (focus) tab.focus();
+};
+tabs.forEach((t, i) => {
+  t.addEventListener('click', () => select(t));
+  t.addEventListener('keydown', e => {
+    const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (step) { e.preventDefault(); select(tabs[(i + step + tabs.length) % tabs.length]!, true); }
+  });
+});
+
+/** Menu button on small screens. */
+const menuBtn = document.querySelector<HTMLButtonElement>('.menu-btn');
+const mobileMenu = document.getElementById('mobile-menu');
+const setMenu = (open: boolean) => { menuBtn?.setAttribute('aria-expanded', String(open)); if (mobileMenu) mobileMenu.hidden = !open; };
+menuBtn?.addEventListener('click', () => setMenu(menuBtn.getAttribute('aria-expanded') !== 'true'));
+mobileMenu?.addEventListener('click', e => { if ((e.target as HTMLElement).closest('a')) setMenu(false); });
